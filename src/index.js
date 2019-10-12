@@ -8,6 +8,7 @@ import recordAlbum from './recordAlbum'
 import ripAlbum from './ripAlbum'
 import tagAlbum from './tagAlbum'
 import publishAlbum from './publishAlbum'
+import extractMp3 from './extractMp3'
 
 const prog = sade('spotrip')
 
@@ -29,12 +30,12 @@ prog
 
 prog.command('record-album <dir>', 'record an album').action(recordAlbum)
 
-prog.command('tag-album <dir>', 'set tags for an album').action(tagAlbum)
+prog.command('retag <dir>', 'set tags for an album').action(tagAlbum)
 
-prog.command('publish-album <dir>', 'publish the album').action(publishAlbum)
+prog.command('publish <dir>', 'publish the album').action(publishAlbum)
 
-prog
-  .command('rip-album <dir>', 'record, tag and store an album')
-  .action(ripAlbum)
+prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum)
+
+prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3)
 
 prog.parse(process.argv)

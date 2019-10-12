@@ -16,7 +16,8 @@ export default async function recordAlbum (path, opts = {}) {
   const md = await readJson(join(path, 'metadata.json'))
 
   log(`Recording ${cyan(md.album)}`)
-  log(`by ${cyan(md.albumArtist.join(','))}`)
+  log(`by ${cyan(md.albumArtist)}`)
+  log(`from ${md.albumUri}`)
   log('')
 
   for (const track of md.tracks) {

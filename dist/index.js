@@ -314,7 +314,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "0.0.1";
+var version = "0.1.0";
 
 const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
 const $ = {
@@ -494,6 +494,7 @@ function toFile (response, file) {
 const exec = util.promisify(child_process.execFile);
 const writeFile = util.promisify(fs.writeFile);
 const readFile = util.promisify(fs.readFile);
+const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
 function normalizeUri (uri, prefix) {
   return `spotify:${prefix}:${uri.replace(/.*[:/]/, '')}`
@@ -566,7 +567,7 @@ async function queue (uri, opts) {
       process.execPath,
       ...process.execArgv,
       process.argv[1],
-      'rip-album',
+      'rip',
       workDir
     ].join(' ') + '\n'
   );
@@ -580,7 +581,7 @@ function albumTags (album) {
   const tags = {
     albumArtist: album.artist.name,
     album: album.name,
-    genre: ['Classical'],
+    genre: 'Classical',
     year: album.year,
     path: null,
     albumUri: album.uri
@@ -681,7 +682,8 @@ async function recordAlbum (path$1, opts = {}) {
   options.set(opts);
   const md = await readJson(path.join(path$1, 'metadata.json'));
   log(`Recording ${cyan$1(md.album)}`);
-  log(`by ${cyan$1(md.albumArtist.join(','))}`);
+  log(`by ${cyan$1(md.albumArtist)}`);
+  log(`from ${md.albumUri}`);
   log('');
   for (const track of md.tracks) {
     const flacFile = path.join(path$1, track.file);
@@ -764,6 +766,78 @@ async function ripAlbum (path, opts = {}) {
   await publishAlbum(path);
 }
 
+const { green: green$2 } = kleur;
+async function extractMp3 (path$1, opts = {}) {
+  options.set(opts);
+  const tracks = await getTracks(path$1);
+  const md = {};
+  let trackNumber = 1;
+  for (const track of tracks) {
+    const mp3File = path.join(path$1, track);
+    const flacFile = mp3File.replace(/\.mp3$/, '.flac');
+    await convertToFlac(mp3File, flacFile);
+    const tags = await readTrackTags(mp3File);
+    if (trackNumber === 1) {
+      md.albumArtist = tags.artist;
+      md.album = tags.album;
+      md.genre = tags.genre;
+      md.year = tags.year;
+      md.path = slugify(md.albumArtist) + '/' + slugify(md.album);
+      md.tracks = [];
+    }
+    md.tracks.push({
+      title: tags.title,
+      artist: tags.artist,
+      trackNumber: trackNumber++,
+      trackTotal: tracks.length,
+      file: path.basename(flacFile)
+    });
+    log(green$2(track));
+  }
+  await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
+  log('');
+  log('Extracted');
+}
+async function getTracks (path) {
+  const files = await readdir(path);
+  return files.filter(name => name.endsWith('.mp3')).sort()
+}
+async function readTrackTags (file) {
+  const { stdout } = await exec('id3v2', ['--list', file]);
+  const data = stdout.split('\n');
+  return {
+    artist: getTag('TPE1', data),
+    album: getTag('TALB', data),
+    genre: getTag('TCON', data),
+    year: getTag('TYER', data),
+    title: getTag('TIT2', data)
+  }
+}
+function getTag (prefix, rows) {
+  const row = rows.filter(text => text.startsWith(prefix))[0];
+  if (!row) return undefined
+  return row.replace(/^.*?: /, '')
+}
+async function convertToFlac (mp3File, flacFile) {
+  const pcmFile = mp3File.replace(/\.mp3$/, '') + '.pcm';
+  log.status(`${path.basename(mp3File)} extracting`);
+  await exec('lame', ['--silent', '--decode', '-t', mp3File, pcmFile]);
+  log.status(`${path.basename(mp3File)} converting`);
+  await exec('flac', [
+    '--silent',
+    '--force',
+    '--force-raw-format',
+    '--endian=little',
+    '--channels=2',
+    '--bps=16',
+    '--sample-rate=44100',
+    '--sign=signed',
+    '--output-name=' + flacFile,
+    pcmFile
+  ]);
+  await exec('rm', [pcmFile]);
+}
+
 const prog = lib$1('spotrip');
 prog
   .version(version)
@@ -779,9 +853,8 @@ prog
   .command('record-track <track-uri> <dest>', 'record a track')
   .action(recordTrack);
 prog.command('record-album <dir>', 'record an album').action(recordAlbum);
-prog.command('tag-album <dir>', 'set tags for an album').action(tagAlbum);
-prog.command('publish-album <dir>', 'publish the album').action(publishAlbum);
-prog
-  .command('rip-album <dir>', 'record, tag and store an album')
-  .action(ripAlbum);
+prog.command('retag <dir>', 'set tags for an album').action(tagAlbum);
+prog.command('publish <dir>', 'publish the album').action(publishAlbum);
+prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum);
+prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3);
 prog.parse(process.argv);

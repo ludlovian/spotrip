@@ -3,7 +3,8 @@
 import {
   writeFile as _writeFile,
   readFile as _readFile,
-  stat as _stat
+  stat as _stat,
+  readdir as _readdir
 } from 'fs'
 import { promisify } from 'util'
 import { execFile as _execFile, spawn as _spawn } from 'child_process'
@@ -11,6 +12,7 @@ import { execFile as _execFile, spawn as _spawn } from 'child_process'
 export const exec = promisify(_execFile)
 export const writeFile = promisify(_writeFile)
 export const readFile = promisify(_readFile)
+export const readdir = promisify(_readdir)
 const stat = promisify(_stat)
 
 export function normalizeUri (uri, prefix) {

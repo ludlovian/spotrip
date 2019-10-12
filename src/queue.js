@@ -40,7 +40,7 @@ export default async function queue (uri, opts) {
       process.execPath,
       ...process.execArgv,
       process.argv[1],
-      'rip-album',
+      'rip',
       workDir
     ].join(' ') + '\n'
   )
@@ -57,7 +57,7 @@ function albumTags (album) {
   const tags = {
     albumArtist: album.artist.name,
     album: album.name,
-    genre: ['Classical'],
+    genre: 'Classical',
     year: album.year,
     path: null,
     albumUri: album.uri
