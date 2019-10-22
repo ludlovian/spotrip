@@ -314,7 +314,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "0.1.0";
+var version = "0.2.0";
 
 const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
 const $ = {
@@ -520,6 +520,17 @@ async function exists (file) {
     return true
   } catch (e) {
     return false
+  }
+}
+function catchExceptions (fn) {
+  return async (...args) => {
+    try {
+      fn(...args);
+    } catch (err) {
+      console.error('An unexpected error occured');
+      console.error(err);
+      process.exit(1);
+    }
   }
 }
 
@@ -848,13 +859,25 @@ prog
     '/nas/data/media/music/albums/Classical'
   )
   .option('--spotweb', 'The port for spotweb', 39704);
-prog.command('queue <album-url>', 'queue the album for ripping').action(queue);
+prog
+  .command('queue <album-url>', 'queue the album for ripping')
+  .action(catchExceptions(queue));
 prog
   .command('record-track <track-uri> <dest>', 'record a track')
-  .action(recordTrack);
-prog.command('record-album <dir>', 'record an album').action(recordAlbum);
-prog.command('retag <dir>', 'set tags for an album').action(tagAlbum);
-prog.command('publish <dir>', 'publish the album').action(publishAlbum);
-prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum);
-prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3);
+  .action(catchExceptions(recordTrack));
+prog
+  .command('record-album <dir>', 'record an album')
+  .action(catchExceptions(recordAlbum));
+prog
+  .command('retag <dir>', 'set tags for an album')
+  .action(catchExceptions(tagAlbum));
+prog
+  .command('publish <dir>', 'publish the album')
+  .action(catchExceptions(publishAlbum));
+prog
+  .command('rip <dir>', 'record, tag and store an album')
+  .action(catchExceptions(ripAlbum));
+prog
+  .command('extract-mp3 <dir>', 'converts MP3 dir')
+  .action(catchExceptions(extractMp3));
 prog.parse(process.argv);
