@@ -8,7 +8,8 @@
     "format": "prettier-standard src/*.js",
     "lint": "standard src/*.js | snazzy",
     "build": "rollup -c rollup.config.js",
-    "postbuild": "chmod +x dist/index.js"
+    "postbuild": "chmod +x dist/index.js",
+    "version": "npm run build && git add dist/index.js"
   },
   "repository": {
     "type": "git",
