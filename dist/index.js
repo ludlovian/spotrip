@@ -742,7 +742,7 @@ function getTags (obj) {
     if (EXCEPT_TAGS.has(K)) continue
     const v = obj[k];
     if (Array.isArray(v)) {
-      tags.push(K + '-' + v.join(', '));
+      tags.push(K + '=' + v.join(', '));
     } else if (v) {
       tags.push(K + '=' + v);
     }
