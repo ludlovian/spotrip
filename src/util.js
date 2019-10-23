@@ -48,7 +48,7 @@ export async function exists (file) {
 export function catchExceptions (fn) {
   return async (...args) => {
     try {
-      fn(...args)
+      await fn(...args)
     } catch (err) {
       console.error('An unexpected error occured')
       console.error(err)

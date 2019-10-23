@@ -525,7 +525,7 @@ async function exists (file) {
 function catchExceptions (fn) {
   return async (...args) => {
     try {
-      fn(...args);
+      await fn(...args);
     } catch (err) {
       console.error('An unexpected error occured');
       console.error(err);
