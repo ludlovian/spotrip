@@ -1,0 +1,87 @@
+#!/bin/bash
+IFS=$'\n\t'; set -eu -o pipefail
+TAB=$'\t'
+
+main() {
+    cd ${0%/*}
+    local file artist album
+    find_queue_details |
+    while read file artist album; do
+        echo $file - $artist: $album
+    done
+
+    echo
+    echo $(count_items) items with $(count_covers) covers
+    echo
+}
+
+find_queue_details() {
+    grep 'album["A]' $(get_metadata_files) |
+        reformat_lines |
+        process_lines
+}
+
+get_metadata_files() {
+    local dir
+    get_queue |
+    while read dir; do
+        echo work/$dir/metadata.json
+    done
+}
+
+reformat_lines() {
+    local file field value
+    while IFS=" " read file field value;do
+        file=${file#work/}
+        file=${file%/metadata.json:}
+
+        field=${field#\"}
+        field=${field%\":}
+
+        value=${value#\"}
+        value=${value%\",}
+
+        echo "$file$TAB$field$TAB$value"
+    done
+}
+
+process_lines() {
+    local prevFile= file field value artist= album=
+    while read file field value; do
+        if [[ -n "$prevFile" && "$file" != "$prevFile" ]]; then
+            print_line $prevFile $artist $album
+            artist=
+            album=
+        fi
+        prevFile=$file
+        case "$field" in
+            albumArtist) artist="$value";;
+            album) album="$value";;
+        esac
+    done
+    if [[ "$prevFile" ]]; then
+        print_line $prevFile $artist $album
+    fi
+}
+
+print_line() {
+    echo "$1$TAB$2$TAB$3"
+}
+
+
+get_queue() {
+    cd queue
+    ls -1t | tac
+}
+
+count_items() {
+    cd queue
+    ls -1 | wc -l
+}
+
+count_covers() {
+    cd work
+    ls */cover.jpg | wc -l
+}
+
+main "$@"

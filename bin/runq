@@ -1,0 +1,32 @@
+#!/bin/bash
+IFS=$'\n\t'
+set -eu
+
+BASE_DIR=$(cd ${0%/*};pwd)
+QUEUE_DIR=${1:-${BASE_DIR}/queue}
+
+main () {
+    while true; do
+        URI=$(get_first)
+        [[ -n "$URI" ]] || break
+        run_job
+        delete_job
+    done
+
+    echo Done
+}
+
+get_first () {
+    ls -1t $QUEUE_DIR |
+        tail -n1
+}
+
+run_job () {
+    bash $QUEUE_DIR/$URI || exit $?
+}
+
+delete_job () {
+    rm $QUEUE_DIR/$URI
+}
+
+main "$@"
