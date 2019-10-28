@@ -1,0 +1,212 @@
+#!/bin/bash
+IFS=$'\t\n'; set -eu -o pipefail
+
+TAB=$'\t'
+declare -A OPTS=([cache]='./files.db')
+declare -A ARGS
+declare -A CACHE
+declare -A local_files
+declare -A remote_files
+
+main() {
+    read_cmdline "$@"
+    read_cache
+
+    logstatus "Scanning local files"
+    scan_local_files
+
+    logstatus "Scanning remote files"
+    scan_remote_files
+
+    local lhash rhash
+
+    for path in $(get_paths); do
+        logstatus "$path"
+
+        ensure_local_hash $path
+
+        if remote_exists $path; then
+            ensure_remote_hash $path
+            if same_file $path; then
+                continue
+            fi
+        fi
+        copy_file_to_remote $path
+
+        log "$path${OPTS[dryrun]:+ (DRY RUN)}"
+    done
+
+    log "done"
+}
+
+die() {
+    echo "$*" >&2
+    exit 1
+}
+
+logstatus() {
+    echo -n $'\r\e[0K'"$*"
+}
+
+log() {
+    local now=$(date +%T)
+    logstatus "$now $*"$'\n'
+}
+
+read_cmdline() {
+    local -a cmd
+    while (($#>0));do case "$1" in
+        -c|--cache) OPTS[cache]="$2";shift;;
+        -f|--filter) OPTS[filter]="$2";shift;;
+        -l|--limit) OPTS[limit]="$2";shift;;
+        -n|--dryrun) OPTS[dryrun]=true;;
+        -*) die "Unknown param: $1";;
+        --) break;;
+        *) cmd+=("$1");;
+    esac; shift; done
+    cmd+=("$@")
+    ARGS[local]=${cmd[0]%/}
+    ARGS[remote]=${cmd[1]%/}
+    ARGS[remote]=${ARGS[remote]#s3://}
+}
+
+read_cache() {
+    [[ -r "${OPTS[cache]}" ]] || return 0
+    local path data
+    while read path data;do
+        CACHE[$path]="$data"
+    done < "${OPTS[cache]}"
+}
+
+write_cache() {
+    local path
+    local cachefile=${OPTS[cache]}
+    for path in ${!CACHE[@]};do
+        echo "$path$TAB${CACHE[$path]}"
+    done | sort > "${cachefile}~tmp"
+    mv ${cachefile}~tmp $cachefile
+}
+
+scan_local_files() {
+    local -a cmd=("${ARGS[local]}" "-type" "f")
+    [[ -n "${OPTS[filter]:-}" ]]  && cmd+=("-name" "${OPTS[filter]}")
+    cmd+=("-printf" "%P\t%s\t%T@\n")
+
+    local details path
+    while read details path;do
+        local_files[$path]="$details"
+    done < <(
+      find "${cmd[@]}" |
+        sort |
+        extract_local_details
+    )
+}
+
+extract_local_details() {
+    local path size mtime
+    while read path size mtime;do
+        echo "${size},${mtime%%.*}$TAB$path"
+    done
+}
+
+scan_remote_files() {
+    local details path
+    while read details path;do
+        remote_files[$path]="$details"
+    done < <(
+      aws ls -l "${ARGS[remote]}" |
+        extract_remote_details
+    )
+}
+
+extract_remote_details() {
+    local prefix=${ARGS[remote]#*/}
+    local perms inode user size date time path
+    while IFS=" " read path inode user size date time path; do
+        echo "${size},${date},${time}$TAB${path#$prefix/}"
+    done
+}
+
+get_paths() {
+    printf "%s\n" "${!local_files[@]}"| sort
+}
+
+ensure_local_hash() {
+    local path=$1
+    local fullpath=${ARGS[local]}/$path
+    local cache_entry=${CACHE[$fullpath]:-}
+    if [[ -n "$cache_entry" ]]; then
+        local details hash
+        read details hash <<< "$cache_entry"
+        if [[ "$details" == "${local_files[$path]}" ]]; then
+            return
+        fi
+    fi
+
+    logstatus "$path hashing..."
+    local hash=$(md5sum $fullpath)
+    hash=${hash%% *}
+    CACHE[$fullpath]="${local_files[$path]}$TAB$hash"
+    write_cache
+}
+
+remote_exists() {
+    local path=$1
+    [[ -n "${remote_files[$path]:-}" ]] || return 1
+}
+
+ensure_remote_hash() {
+    local path=$1
+    local fullpath=s3://${ARGS[remote]}/$path
+    local cache_entry=${CACHE[$fullpath]:-}
+    if [[ -n "$cache_entry" ]]; then
+        local details hash
+        read details hash <<< "$cache_entry"
+        if [[ "$details" == "${remote_files[$path]}" ]]; then
+            return
+        fi
+    fi
+
+    logstatus "$path analysing..."
+    local date time size hash rest
+    IFS=" " read date time size hash rest < <(s3cmd --list-md5 ls $fullpath)
+    CACHE[$fullpath]="${remote_files[$path]}$TAB$hash"
+    write_cache
+}
+
+same_file() {
+    local path=$1 details lhash rhash
+    local localpath=${ARGS[local]}/$path
+    local remotepath=s3://${ARGS[remote]}/$path
+    read details lhash <<<"${CACHE[$localpath]}"
+    read details rhash <<<"${CACHE[$remotepath]}"
+    [[ "$lhash" == "$rhash" ]] || return 1
+}
+
+copy_file_to_remote() {
+    [[ -z "${OPTS[dryrun]:-}" ]] || return 0
+
+    local path=$1
+    local localpath=${ARGS[local]}/$path
+    local remotepath=${ARGS[remote]}/$path
+
+    local -a cmd
+    cmd+=(--no-progress --quiet --disable-multipart)
+    [[ "${OPTS[limit]:-}" ]] && cmd+=(--limit-rate=${OPTS[limit]})
+    cmd+=(put $localpath s3://$remotepath)
+
+    logstatus "$path copying..."
+    s3cmd "${cmd[@]}" ||
+        die "Failed to upload $path"
+
+    local details rest
+    read details rest < <(
+        aws ls -l $remotepath |
+            extract_remote_details
+    )
+    remote_files[$path]=$details
+    unset CACHE[s3://$remotepath]
+    ensure_remote_hash $path
+}
+
+main "$@"
