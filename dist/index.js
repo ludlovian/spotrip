@@ -522,17 +522,6 @@ async function exists (file) {
     return false
   }
 }
-function catchExceptions (fn) {
-  return async (...args) => {
-    try {
-      await fn(...args);
-    } catch (err) {
-      console.error('An unexpected error occured');
-      console.error(err);
-      process.exit(1);
-    }
-  }
-}
 
 const CSI = '\u001B[';
 const CR = '\r';
@@ -708,7 +697,7 @@ async function recordAlbum (path$1, opts = {}) {
 
 async function checkoutAlbum (path$1, opts = {}) {
   options.set(opts);
-  path$1 = path.normalize(path$1);
+  path$1 = path.resolve(path$1);
   if (path$1.startsWith(options.work)) {
     return path$1
   }
@@ -952,31 +941,25 @@ prog
     '/nas/data/media/music/albums/Classical'
   )
   .option('--spotweb', 'The port for spotweb', 39704);
-prog
-  .command('queue <album-url>', 'queue the album for ripping')
-  .action(catchExceptions(queue));
+prog.command('queue <album-url>', 'queue the album for ripping').action(queue);
 prog
   .command('record-track <track-uri> <dest>', 'record a track')
-  .action(catchExceptions(recordTrack));
-prog
-  .command('record-album <dir>', 'record an album')
-  .action(catchExceptions(recordAlbum));
-prog
-  .command('retag <dir>', 'set tags for an album')
-  .action(catchExceptions(tagAlbum));
+  .action(recordTrack);
+prog.command('record-album <dir>', 'record an album').action(recordAlbum);
+prog.command('retag <dir>', 'set tags for an album').action(tagAlbum);
 prog
   .command('checkout <dir>', 'checkout a working copy of the album')
-  .action(catchExceptions(checkoutAlbum));
-prog
-  .command('publish <dir>', 'publish the album')
-  .action(catchExceptions(publishAlbum));
-prog
-  .command('rip <dir>', 'record, tag and store an album')
-  .action(catchExceptions(ripAlbum));
-prog
-  .command('extract-mp3 <dir>', 'converts MP3 dir')
-  .action(catchExceptions(extractMp3));
-prog
-  .command('extract-flac <dir>', 'converts FLAC dir')
-  .action(catchExceptions(extractFlac));
-prog.parse(process.argv);
+  .action(checkoutAlbum);
+prog.command('publish <dir>', 'publish the album').action(publishAlbum);
+prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum);
+prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3);
+prog.command('extract-flac <dir>', 'converts FLAC dir').action(extractFlac);
+const parse$1 = prog.parse(process.argv, { lazy: true });
+if (parse$1) {
+  const { handler, args } = parse$1;
+  handler.apply(null, args).catch(err => {
+    console.error('An unexpected error occured');
+    console.error(err);
+    process.exit(1);
+  });
+}

@@ -44,15 +44,3 @@ export async function exists (file) {
     return false
   }
 }
-
-export function catchExceptions (fn) {
-  return async (...args) => {
-    try {
-      await fn(...args)
-    } catch (err) {
-      console.error('An unexpected error occured')
-      console.error(err)
-      process.exit(1)
-    }
-  }
-}

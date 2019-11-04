@@ -1,6 +1,6 @@
 'use strict'
 
-import { join, normalize } from 'path'
+import { join, resolve } from 'path'
 
 import options from './options'
 import { readJson, exec } from './util'
@@ -9,7 +9,7 @@ import log from './log'
 export default async function checkoutAlbum (path, opts = {}) {
   options.set(opts)
 
-  path = normalize(path)
+  path = resolve(path)
 
   if (path.startsWith(options.work)) {
     return path
