@@ -8,7 +8,9 @@ import recordAlbum from './recordAlbum'
 import ripAlbum from './ripAlbum'
 import tagAlbum from './tagAlbum'
 import publishAlbum from './publishAlbum'
+import checkoutAlbum from './checkoutAlbum'
 import extractMp3 from './extractMp3'
+import extractFlac from './extractFlac'
 import { catchExceptions } from './util'
 
 const prog = sade('spotrip')
@@ -40,6 +42,10 @@ prog
   .action(catchExceptions(tagAlbum))
 
 prog
+  .command('checkout <dir>', 'checkout a working copy of the album')
+  .action(catchExceptions(checkoutAlbum))
+
+prog
   .command('publish <dir>', 'publish the album')
   .action(catchExceptions(publishAlbum))
 
@@ -50,5 +56,9 @@ prog
 prog
   .command('extract-mp3 <dir>', 'converts MP3 dir')
   .action(catchExceptions(extractMp3))
+
+prog
+  .command('extract-flac <dir>', 'converts FLAC dir')
+  .action(catchExceptions(extractFlac))
 
 prog.parse(process.argv)
