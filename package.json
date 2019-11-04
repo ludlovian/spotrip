@@ -1,6 +1,6 @@
 {
   "name": "spotrip",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Spotify ripping",
   "main": "dist/index.js",
   "scripts": {

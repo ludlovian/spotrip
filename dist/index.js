@@ -314,7 +314,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "0.3.3";
+var version = "0.3.4";
 
 const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
 const $ = {
@@ -706,6 +706,28 @@ async function recordAlbum (path$1, opts = {}) {
   log('');
 }
 
+async function checkoutAlbum (path$1, opts = {}) {
+  options.set(opts);
+  path$1 = path.normalize(path$1);
+  if (path$1.startsWith(options.work)) {
+    return path$1
+  }
+  const md = await readJson(path.join(path$1, 'metadata.json'));
+  const workDir = md.path.replace('/', '_');
+  const workPath = path.join(options.work, 'work', workDir);
+  log.status(`Copying to ${workDir}`);
+  await exec('mkdir', ['-p', workPath]);
+  await exec('rsync', [
+    '--times',
+    '--recursive',
+    '--omit-dir-times',
+    path$1 + '/',
+    workPath + '/'
+  ]);
+  log(`Copied to ${workDir}`);
+  return workPath
+}
+
 async function tagAlbum (path$1, opts = {}) {
   options.set(opts);
   const md = await readJson(path.join(path$1, 'metadata.json'));
@@ -772,9 +794,10 @@ async function publishAlbum (path$1, opts = {}) {
 
 async function ripAlbum (path, opts = {}) {
   options.set(opts);
-  await recordAlbum(path);
-  await tagAlbum(path);
-  await publishAlbum(path);
+  const workPath = await checkoutAlbum(path);
+  await recordAlbum(workPath);
+  await tagAlbum(workPath);
+  await publishAlbum(workPath);
 }
 
 const { green: green$2 } = kleur;
@@ -849,6 +872,76 @@ async function convertToFlac (mp3File, flacFile) {
   await exec('rm', [pcmFile]);
 }
 
+const { green: green$3 } = kleur;
+async function extractFlac (path$1, opts = {}) {
+  options.set(opts);
+  const tracks = await getTracks$1(path$1);
+  const md = {};
+  let trackNumber = 1;
+  for (const track of tracks) {
+    const flacFile = path.join(path$1, track);
+    const tags = await readTrackTags$1(flacFile);
+    if (trackNumber === 1) {
+      md.albumArtist = tags.ALBUMARTIST;
+      md.album = tags.ALBUM;
+      md.genre = tags.GENRE || 'Classical';
+      md.year = tags.YEAR;
+      md.path = slugify(md.albumArtist) + '/' + slugify(md.album);
+      md.discTotal = tags.DISCTOTAL;
+      md.tracks = [];
+    }
+    md.tracks.push({
+      title: tags.TITLE,
+      artist: tags.ARTIST,
+      trackNumber: trackNumber++,
+      trackTotal: tracks.length,
+      file: path.basename(flacFile)
+    });
+    log(green$3(track));
+  }
+  await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
+  log('');
+  log('Extracted');
+}
+async function getTracks$1 (path) {
+  const files = await readdir(path);
+  return files.filter(name => name.endsWith('.flac')).sort()
+}
+const TAGS = [
+  'TITLE',
+  'TRACKNUMBER',
+  'DISCNUMMBER',
+  'TRACKTOTAL',
+  'TOTALDISCS',
+  'ALBUM',
+  'ALBUMARTIST',
+  'YEAR',
+  'ARTIST',
+  'GENRE'
+];
+async function readTrackTags$1 (file) {
+  const { stdout } = await exec('metaflac', [
+    ...TAGS.map(tag => `--show-tag=${tag}`),
+    file
+  ]);
+  const lines = stdout.split('\n').filter(Boolean);
+  const tags = {};
+  for (const line of lines) {
+    const match = /^(\w+)=(.*)$/.exec(line);
+    if (!match) continue
+    const key = match[1];
+    const value = match[2].trim();
+    if (!tags[key]) {
+      tags[key] = value;
+    } else if (Array.isArray(tags[key])) {
+      tags[key].push(value);
+    } else {
+      tags[key] = [tags[key], value];
+    }
+  }
+  return tags
+}
+
 const prog = lib$1('spotrip');
 prog
   .version(version)
@@ -872,6 +965,9 @@ prog
   .command('retag <dir>', 'set tags for an album')
   .action(catchExceptions(tagAlbum));
 prog
+  .command('checkout <dir>', 'checkout a working copy of the album')
+  .action(catchExceptions(checkoutAlbum));
+prog
   .command('publish <dir>', 'publish the album')
   .action(catchExceptions(publishAlbum));
 prog
@@ -880,4 +976,7 @@ prog
 prog
   .command('extract-mp3 <dir>', 'converts MP3 dir')
   .action(catchExceptions(extractMp3));
+prog
+  .command('extract-flac <dir>', 'converts FLAC dir')
+  .action(catchExceptions(extractFlac));
 prog.parse(process.argv);
