@@ -496,8 +496,13 @@ const writeFile = util.promisify(fs.writeFile);
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
+const URI_PATTERN = /^[a-zA-Z0-9]{22}$/;
 function normalizeUri (uri, prefix) {
-  return `spotify:${prefix}:${uri.replace(/.*[:/]/, '')}`
+  const coreUri = uri.replace(/.*[:/]/, '');
+  if (!URI_PATTERN.test(coreUri)) {
+    throw new Error(`Bad URI: ${uri}`)
+  }
+  return `spotify:${prefix}:${coreUri}`
 }
 function spawn (...args) {
   const proc = child_process.spawn(...args);
@@ -544,23 +549,55 @@ function status (string) {
 log.status = status;
 log.log = log;
 
+async function checkoutAlbum (path$1, opts = {}) {
+  options.set(opts);
+  path$1 = path.resolve(path$1);
+  if (path$1.startsWith(options.work)) {
+    return path$1
+  }
+  const md = await readJson(path.join(path$1, 'metadata.json'));
+  const workDir = md.path.replace('/', '_');
+  const workPath = path.join(options.work, 'work', workDir);
+  log.status(`Copying to ${workDir}`);
+  await exec('mkdir', ['-p', workPath]);
+  await exec('rsync', [
+    '--times',
+    '--recursive',
+    '--omit-dir-times',
+    path$1 + '/',
+    workPath + '/'
+  ]);
+  log(`Copied to ${workDir}`);
+  return workPath
+}
+
 const { green, cyan } = kleur;
 async function queue (uri, opts) {
   options.set(opts);
   uri = normalizeUri(uri, 'album');
-  const workDir = path.join(options.work, 'work', uri.replace(/.*:/, ''));
-  const queueFile = path.join(options.work, 'queue', uri.replace(/.*:/, ''));
-  const jsonFile = path.join(workDir, 'metadata.json');
   log(`Queuing ${green(uri)}`);
-  await exec('mkdir', ['-p', workDir]);
-  await exec('mkdir', ['-p', path.dirname(queueFile)]);
   const album = await spotweb(`/album/${uri}`).json();
-  const metadata = {
+  let metadata = {
     ...albumTags(album),
     tracks: album.tracks.map(track => trackTags(track, album))
   };
+  const jsonFile = path.join(options.work, 'work', uri.replace(/.*:/, '') + '.json');
   await writeFile(jsonFile, JSON.stringify(metadata, null, 2));
   await spawn('vi', [jsonFile], { stdio: 'inherit' }).done;
+  metadata = await readJson(jsonFile);
+  await exec('rm', [jsonFile]);
+  const storePath = path.join(options.store, metadata.path);
+  if (await exists(storePath)) {
+    throw new Error(`Already exists: ${storePath}`)
+  }
+  await exec('mkdir', ['-p', storePath]);
+  await writeFile(
+    path.join(storePath, 'metadata.json'),
+    JSON.stringify(metadata, null, 2)
+  );
+  const workPath = await checkoutAlbum(storePath);
+  const jobName = path.basename(workPath);
+  const queueFile = path.join(options.work, 'queue', jobName);
   await writeFile(
     queueFile,
     [
@@ -568,10 +605,10 @@ async function queue (uri, opts) {
       ...process.execArgv,
       process.argv[1],
       'rip',
-      workDir
+      workPath
     ].join(' ') + '\n'
   );
-  log(`\nQueued ${cyan(uri)} for ripping`);
+  log(`\nQueued ${cyan(jobName)} for ripping`);
 }
 function slug (s) {
   const slugOpts = { remove: /[^\w\s_-]/ };
@@ -693,28 +730,6 @@ async function recordAlbum (path$1, opts = {}) {
     log(green$1(track.file));
   }
   log('');
-}
-
-async function checkoutAlbum (path$1, opts = {}) {
-  options.set(opts);
-  path$1 = path.resolve(path$1);
-  if (path$1.startsWith(options.work)) {
-    return path$1
-  }
-  const md = await readJson(path.join(path$1, 'metadata.json'));
-  const workDir = md.path.replace('/', '_');
-  const workPath = path.join(options.work, 'work', workDir);
-  log.status(`Copying to ${workDir}`);
-  await exec('mkdir', ['-p', workPath]);
-  await exec('rsync', [
-    '--times',
-    '--recursive',
-    '--omit-dir-times',
-    path$1 + '/',
-    workPath + '/'
-  ]);
-  log(`Copied to ${workDir}`);
-  return workPath
 }
 
 async function tagAlbum (path$1, opts = {}) {

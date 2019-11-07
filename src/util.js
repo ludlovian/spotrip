@@ -15,8 +15,14 @@ export const readFile = promisify(_readFile)
 export const readdir = promisify(_readdir)
 const stat = promisify(_stat)
 
+const URI_PATTERN = /^[a-zA-Z0-9]{22}$/
+
 export function normalizeUri (uri, prefix) {
-  return `spotify:${prefix}:${uri.replace(/.*[:/]/, '')}`
+  const coreUri = uri.replace(/.*[:/]/, '')
+  if (!URI_PATTERN.test(coreUri)) {
+    throw new Error(`Bad URI: ${uri}`)
+  }
+  return `spotify:${prefix}:${coreUri}`
 }
 
 export function spawn (...args) {

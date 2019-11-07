@@ -2,12 +2,13 @@
 
 import kleur from 'kleur'
 import slugify from 'slugify'
-import { join, dirname } from 'path'
+import { join, basename } from 'path'
 
 import spotweb from './spotweb'
 import options from './options'
-import { normalizeUri, exec, spawn, writeFile } from './util'
+import { normalizeUri, exec, spawn, writeFile, readJson, exists } from './util'
 import log from './log'
+import checkoutAlbum from './checkoutAlbum'
 
 const { green, cyan } = kleur
 
@@ -15,24 +16,38 @@ export default async function queue (uri, opts) {
   options.set(opts)
   uri = normalizeUri(uri, 'album')
 
-  const workDir = join(options.work, 'work', uri.replace(/.*:/, ''))
-  const queueFile = join(options.work, 'queue', uri.replace(/.*:/, ''))
-  const jsonFile = join(workDir, 'metadata.json')
-
   log(`Queuing ${green(uri)}`)
-
-  await exec('mkdir', ['-p', workDir])
-  await exec('mkdir', ['-p', dirname(queueFile)])
 
   const album = await spotweb(`/album/${uri}`).json()
 
-  const metadata = {
+  let metadata = {
     ...albumTags(album),
     tracks: album.tracks.map(track => trackTags(track, album))
   }
 
+  const jsonFile = join(options.work, 'work', uri.replace(/.*:/, '') + '.json')
+
   await writeFile(jsonFile, JSON.stringify(metadata, null, 2))
   await spawn('vi', [jsonFile], { stdio: 'inherit' }).done
+
+  metadata = await readJson(jsonFile)
+  await exec('rm', [jsonFile])
+
+  const storePath = join(options.store, metadata.path)
+  if (await exists(storePath)) {
+    throw new Error(`Already exists: ${storePath}`)
+  }
+
+  await exec('mkdir', ['-p', storePath])
+
+  await writeFile(
+    join(storePath, 'metadata.json'),
+    JSON.stringify(metadata, null, 2)
+  )
+
+  const workPath = await checkoutAlbum(storePath)
+  const jobName = basename(workPath)
+  const queueFile = join(options.work, 'queue', jobName)
 
   await writeFile(
     queueFile,
@@ -41,11 +56,11 @@ export default async function queue (uri, opts) {
       ...process.execArgv,
       process.argv[1],
       'rip',
-      workDir
+      workPath
     ].join(' ') + '\n'
   )
 
-  log(`\nQueued ${cyan(uri)} for ripping`)
+  log(`\nQueued ${cyan(jobName)} for ripping`)
 }
 
 function slug (s) {
