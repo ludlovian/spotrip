@@ -600,13 +600,8 @@ async function queue (uri, opts) {
   const queueFile = path.join(options.work, 'queue', jobName);
   await writeFile(
     queueFile,
-    [
-      process.execPath,
-      ...process.execArgv,
-      process.argv[1],
-      'rip',
-      workPath
-    ].join(' ') + '\n'
+    ['node', ...process.execArgv, process.argv[1], 'rip', workPath].join(' ') +
+      '\n'
   );
   log(`\nQueued ${cyan(jobName)} for ripping`);
 }
