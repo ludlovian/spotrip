@@ -1,19 +1,17 @@
 'use strict'
 
-import {
-  writeFile as _writeFile,
-  readFile as _readFile,
-  stat as _stat,
-  readdir as _readdir
-} from 'fs'
+import fs from 'fs'
+import stream from 'stream'
 import { promisify } from 'util'
 import { execFile as _execFile, spawn as _spawn } from 'child_process'
 
+export const pipeline = promisify(stream.pipeline)
+
 export const exec = promisify(_execFile)
-export const writeFile = promisify(_writeFile)
-export const readFile = promisify(_readFile)
-export const readdir = promisify(_readdir)
-const stat = promisify(_stat)
+export const writeFile = fs.promises.writeFile
+export const readFile = fs.promises.readFile
+export const readdir = fs.promises.readdir
+const stat = fs.promises.stat
 
 const URI_PATTERN = /^[a-zA-Z0-9]{22}$/
 
@@ -49,4 +47,17 @@ export async function exists (file) {
   } catch (e) {
     return false
   }
+}
+
+export function time (n) {
+  n = Math.round(n)
+  const mn = Math.floor(n / 60)
+    .toString()
+    .padStart(2, '0')
+  const sc = (n % 60).toString().padStart(2, '0')
+  return `${mn}:${sc}`
+}
+
+export function comma (n) {
+  return typeof n === 'number' ? n.toLocaleString() : ''
 }

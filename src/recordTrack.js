@@ -1,68 +1,105 @@
 'use strict'
 
 import { basename } from 'path'
+import kleur from 'kleur'
+
+import progressStream from 'progress-stream'
+import { createWriteStream } from 'fs'
 
 import options from './options'
-import { normalizeUri, exec } from './util'
-import spotweb from './spotweb'
+import { normalizeUri, exec, pipeline, time } from './util'
+import { getStream, getData } from './spotweb'
 import log from './log'
+import Speedo from './speedo'
 
-export default async function recordTrack (uri, dest, opts = {}) {
+const { green } = kleur
+
+const ONE_SECOND = 2 * 2 * 44100
+
+export default async function recordTrack (uri, flacFile, opts = {}) {
   options.set(opts)
-
   uri = normalizeUri(uri, 'track')
-  const pcm = dest.replace(/\.flac$/, '') + '.pcm'
-  const filename = basename(dest)
-  const { progressFrequency = 1000 } = options
+  const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm'
 
-  showProgress('capturing')
-  const progressInterval = setInterval(getProgress, progressFrequency)
+  let msg = basename(flacFile)
 
-  try {
-    await spotweb(`/play/${uri}?format=raw`).toFile(pcm)
-  } finally {
-    clearInterval(progressInterval)
-  }
+  await capturePCM(uri, pcmFile)
+  await convertPCMtoFLAC(pcmFile, flacFile)
+  log(green(msg))
 
-  const receipt = await spotweb(`/receipt/${uri}`).json()
-  if (receipt.failed) {
-    throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
-  }
+  async function capturePCM (uri, pcmFile) {
+    log.status(`${green(msg)} ... `)
+    const speedo = new Speedo(60)
 
-  showProgress('converting')
+    const dataStream = await getStream(`/play/${uri}?format=raw`)
+    const progress = progressStream({
+      progressInterval: 1000,
+      onProgress ({ bytes, done }) {
+        const curr = bytes / ONE_SECOND
+        speedo.update(curr)
+        if (done) {
+          const dur = speedo.taken()
+          const speed = (curr / dur).toFixed(1)
+          msg = `${msg} - ${time(curr)}  at ${speed}x`
+          log.status(green(msg))
+        } else {
+          speedo.update(curr)
+          if (speedo.total) {
+            log.status(
+              [
+                `${green(msg)} - `,
+                `${time(curr)}  `,
+                `of ${time(speedo.total)}  `,
+                `eta ${time(speedo.eta())} `
+              ].join('')
+            )
+          }
+        }
+      }
+    })
 
-  await exec('flac', [
-    '--silent',
-    '--force',
-    '--force-raw-format',
-    '--endian=little',
-    '--channels=2',
-    '--bps=16',
-    '--sample-rate=44100',
-    '--sign=signed',
-    `--output-name=${dest}`,
-    pcm
-  ])
+    // request just one status packet to get the total
+    getLength().then(
+      length => {
+        speedo.total = length
+      },
+      err => dataStream.emit('error', err)
+    )
 
-  await exec('rm', [pcm])
+    // output file & string it all together
+    const fileStream = createWriteStream(pcmFile)
+    await pipeline(dataStream, progress, fileStream)
 
-  function showProgress (action, pct) {
-    const pctString = pct == null ? '' : ` ... ${Math.floor(pct)}%`
-    log.status(`${filename} ${action}${pctString} `)
-  }
-
-  async function getProgress () {
-    const data = await spotweb('/status').json()
-    const { status } = data
-    if (
-      !status.streaming ||
-      status.uri !== uri ||
-      typeof status.length !== 'number' ||
-      status.length <= 0 ||
-      typeof status.pos !== 'number'
-    ) {
-      return
+    const receipt = await getData(`/receipt/${uri}`)
+    if (receipt.failed) {
+      throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
     }
-    showProgress('capturing', (100 * status.pos) / status.length)
+
+    async function getLength () {
+      const { status } = await getData('/status')
+      if (status.streaming) return status.length
+      await delay(500)
+      return getLength()
+    }
+  }
+
+  async function convertPCMtoFLAC (pcmFile, flacFile) {
+    log.status(`${green(msg)} ... converting`)
+    await exec('flac', [
+      '--silent',
+      '--force',
+      '--force-raw-format',
+      '--endian=little',
+      '--channels=2',
+      '--bps=16',
+      '--sample-rate=44100',
+      '--sign=signed',
+      `--output-name=${flacFile}`,
+      pcmFile
+    ])
+
+    await exec('rm', [pcmFile])
   }
 }
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))

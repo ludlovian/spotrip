@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 'use strict';
 
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
 var path = require('path');
+var http = _interopDefault(require('http'));
 var fs = require('fs');
-var http = require('http');
+var fs__default = _interopDefault(fs);
+var stream = _interopDefault(require('stream'));
 var util = require('util');
 var child_process = require('child_process');
 
@@ -452,50 +456,37 @@ class Options {
 }
 const options = new Options();
 
-function spotweb (path) {
-  const opts = {
-    path,
-    port: options.spotweb,
-    method: 'GET'
-  };
-  const pResponse = new Promise((resolve, reject) => {
-    const req = http.request(opts, resolve);
-    req.once('error', reject);
-    req.end();
-  }).catch(e => {
-    if (e.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
-    throw e
-  });
-  pResponse.json = () => pResponse.then(r => toJson(r));
-  pResponse.toFile = file => pResponse.then(r => toFile(r, file));
-  return pResponse
+async function getData (path) {
+  const response = await getResponse(path);
+  response.setEncoding('utf8');
+  let data = '';
+  for await (const chunk of response) {
+    data += chunk;
+  }
+  return JSON.parse(data)
 }
-function toJson (response) {
+function getStream (path) {
+  return getResponse(path)
+}
+function getResponse (path) {
   return new Promise((resolve, reject) => {
-    let data = '';
-    response.setEncoding('utf8');
-    response
+    const { spotweb: port } = options;
+    http
+      .get(`http://localhost:${port}${path}`, resolve)
       .once('error', reject)
-      .on('data', chunk => {
-        data += chunk;
-      })
-      .on('end', () => resolve(data));
-  }).then(data => JSON.parse(data))
-}
-function toFile (response, file) {
-  return new Promise((resolve, reject) => {
-    const stream = fs.createWriteStream(file, { encoding: null });
-    stream.once('error', reject).on('finish', resolve);
-    response.once('error', reject);
-    response.pipe(stream);
+      .end();
+  }).catch(err => {
+    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
+    throw err
   })
 }
 
+const pipeline = util.promisify(stream.pipeline);
 const exec = util.promisify(child_process.execFile);
-const writeFile = util.promisify(fs.writeFile);
-const readFile = util.promisify(fs.readFile);
-const readdir = util.promisify(fs.readdir);
-const stat = util.promisify(fs.stat);
+const writeFile = fs__default.promises.writeFile;
+const readFile = fs__default.promises.readFile;
+const readdir = fs__default.promises.readdir;
+const stat = fs__default.promises.stat;
 const URI_PATTERN = /^[a-zA-Z0-9]{22}$/;
 function normalizeUri (uri, prefix) {
   const coreUri = uri.replace(/.*[:/]/, '');
@@ -526,6 +517,14 @@ async function exists (file) {
   } catch (e) {
     return false
   }
+}
+function time (n) {
+  n = Math.round(n);
+  const mn = Math.floor(n / 60)
+    .toString()
+    .padStart(2, '0');
+  const sc = (n % 60).toString().padStart(2, '0');
+  return `${mn}:${sc}`
 }
 
 const CSI = '\u001B[';
@@ -576,7 +575,7 @@ async function queue (uri, opts) {
   options.set(opts);
   uri = normalizeUri(uri, 'album');
   log(`Queuing ${green(uri)}`);
-  const album = await spotweb(`/album/${uri}`).json();
+  const album = await getData(`/album/${uri}`);
   let metadata = {
     ...albumTags(album),
     tracks: album.tracks.map(track => trackTags(track, album))
@@ -658,58 +657,149 @@ function uniq (list) {
   return [...s]
 }
 
-async function recordTrack (uri, dest, opts = {}) {
-  options.set(opts);
-  uri = normalizeUri(uri, 'track');
-  const pcm = dest.replace(/\.flac$/, '') + '.pcm';
-  const filename = path.basename(dest);
-  const { progressFrequency = 1000 } = options;
-  showProgress('capturing');
-  const progressInterval = setInterval(getProgress, progressFrequency);
-  try {
-    await spotweb(`/play/${uri}?format=raw`).toFile(pcm);
-  } finally {
-    clearInterval(progressInterval);
-  }
-  const receipt = await spotweb(`/receipt/${uri}`).json();
-  if (receipt.failed) {
-    throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
-  }
-  showProgress('converting');
-  await exec('flac', [
-    '--silent',
-    '--force',
-    '--force-raw-format',
-    '--endian=little',
-    '--channels=2',
-    '--bps=16',
-    '--sample-rate=44100',
-    '--sign=signed',
-    `--output-name=${dest}`,
-    pcm
-  ]);
-  await exec('rm', [pcm]);
-  function showProgress (action, pct) {
-    const pctString = pct == null ? '' : ` ... ${Math.floor(pct)}%`;
-    log.status(`${filename} ${action}${pctString} `);
-  }
-  async function getProgress () {
-    const data = await spotweb('/status').json();
-    const { status } = data;
-    if (
-      !status.streaming ||
-      status.uri !== uri ||
-      typeof status.length !== 'number' ||
-      status.length <= 0 ||
-      typeof status.pos !== 'number'
-    ) {
-      return
+function progress (opts = {}) {
+  const { onProgress, progressInterval, ...rest } = opts;
+  let interval;
+  let bytes = 0;
+  let done = false;
+  const ts = new stream.Transform({
+    transform (chunk, encoding, cb) {
+      bytes += chunk.length;
+      cb(null, chunk);
+    },
+    flush (cb) {
+      if (interval) clearInterval(interval);
+      done = true;
+      reportProgress();
+      cb();
     }
-    showProgress('capturing', (100 * status.pos) / status.length);
+  });
+  if (progressInterval) {
+    interval = setInterval(reportProgress, progressInterval);
+  }
+  if (typeof onProgress === 'function') {
+    ts.on('progress', onProgress);
+  }
+  ts.on('pipe', src => src.on('error', err => ts.emit(err)));
+  return ts
+  function reportProgress () {
+    ts.emit('progress', { bytes, done, ...rest });
+  }
+}
+var dist = progress;
+
+class Speedo {
+  constructor ({ length = 10 } = {}) {
+    this.length = length;
+    this.start = Date.now();
+    this.readings = [[this.start, 0]];
+  }
+  update (n) {
+    this.readings.push([Date.now(), n]);
+    if (this.readings.length > this.length) {
+      this.readings.splice(0, this.readings.length - this.length);
+    }
+    this.current = n;
+  }
+  rate () {
+    if (this.readings.length < 2) return null
+    const last = this.readings[this.readings.length - 1];
+    const first = this.readings[0];
+    return (1e3 * (last[1] - first[1])) / (last[0] - first[0])
+  }
+  percent () {
+    if (!this.total) return null
+    return Math.round((100 * this.current) / this.total)
+  }
+  eta () {
+    if (!this.total) return null
+    const rate = this.rate();
+    if (rate === null) return null
+    return (this.total - this.current) / rate
+  }
+  taken () {
+    return (this.readings[this.readings.length - 1][0] - this.start) / 1e3
   }
 }
 
-const { green: green$1, cyan: cyan$1 } = kleur;
+const { green: green$1 } = kleur;
+const ONE_SECOND = 2 * 2 * 44100;
+async function recordTrack (uri, flacFile, opts = {}) {
+  options.set(opts);
+  uri = normalizeUri(uri, 'track');
+  const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm';
+  let msg = path.basename(flacFile);
+  await capturePCM(uri, pcmFile);
+  await convertPCMtoFLAC(pcmFile, flacFile);
+  log(green$1(msg));
+  async function capturePCM (uri, pcmFile) {
+    log.status(`${green$1(msg)} ... `);
+    const speedo = new Speedo(60);
+    const dataStream = await getStream(`/play/${uri}?format=raw`);
+    const progress = dist({
+      progressInterval: 1000,
+      onProgress ({ bytes, done }) {
+        const curr = bytes / ONE_SECOND;
+        speedo.update(curr);
+        if (done) {
+          const dur = speedo.taken();
+          const speed = (curr / dur).toFixed(1);
+          msg = `${msg} - ${time(curr)}  at ${speed}x`;
+          log.status(green$1(msg));
+        } else {
+          speedo.update(curr);
+          if (speedo.total) {
+            log.status(
+              [
+                `${green$1(msg)} - `,
+                `${time(curr)}  `,
+                `of ${time(speedo.total)}  `,
+                `eta ${time(speedo.eta())} `
+              ].join('')
+            );
+          }
+        }
+      }
+    });
+    getLength().then(
+      length => {
+        speedo.total = length;
+      },
+      err => dataStream.emit('error', err)
+    );
+    const fileStream = fs.createWriteStream(pcmFile);
+    await pipeline(dataStream, progress, fileStream);
+    const receipt = await getData(`/receipt/${uri}`);
+    if (receipt.failed) {
+      throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
+    }
+    async function getLength () {
+      const { status } = await getData('/status');
+      if (status.streaming) return status.length
+      await delay(500);
+      return getLength()
+    }
+  }
+  async function convertPCMtoFLAC (pcmFile, flacFile) {
+    log.status(`${green$1(msg)} ... converting`);
+    await exec('flac', [
+      '--silent',
+      '--force',
+      '--force-raw-format',
+      '--endian=little',
+      '--channels=2',
+      '--bps=16',
+      '--sample-rate=44100',
+      '--sign=signed',
+      `--output-name=${flacFile}`,
+      pcmFile
+    ]);
+    await exec('rm', [pcmFile]);
+  }
+}
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const { cyan: cyan$1 } = kleur;
 async function recordAlbum (path$1, opts = {}) {
   options.set(opts);
   const md = await readJson(path.join(path$1, 'metadata.json'));
@@ -722,7 +812,6 @@ async function recordAlbum (path$1, opts = {}) {
     if (!(await exists(flacFile))) {
       await recordTrack(track.trackUri, flacFile);
     }
-    log(green$1(track.file));
   }
   log('');
 }
@@ -743,6 +832,7 @@ async function tagAlbum (path$1, opts = {}) {
   }
   log.status('Calculating replay gain');
   await addReplayGain(md.tracks.map(track => path.join(path$1, track.file)));
+  log('Album tags written');
 }
 async function importCover (file, cover) {
   await exec('metaflac', ['--remove', '--block-type=PICTURE', file]);

@@ -8,7 +8,7 @@ import recordTrack from './recordTrack'
 import { readJson, exists } from './util'
 import log from './log'
 
-const { green, cyan } = kleur
+const { cyan } = kleur
 
 export default async function recordAlbum (path, opts = {}) {
   options.set(opts)
@@ -26,8 +26,6 @@ export default async function recordAlbum (path, opts = {}) {
     if (!(await exists(flacFile))) {
       await recordTrack(track.trackUri, flacFile)
     }
-
-    log(green(track.file))
   }
 
   log('')

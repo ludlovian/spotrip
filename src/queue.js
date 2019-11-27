@@ -4,7 +4,7 @@ import kleur from 'kleur'
 import slugify from 'slugify'
 import { join, basename } from 'path'
 
-import spotweb from './spotweb'
+import { getData } from './spotweb'
 import options from './options'
 import { normalizeUri, exec, spawn, writeFile, readJson, exists } from './util'
 import log from './log'
@@ -18,7 +18,7 @@ export default async function queue (uri, opts) {
 
   log(`Queuing ${green(uri)}`)
 
-  const album = await spotweb(`/album/${uri}`).json()
+  const album = await getData(`/album/${uri}`)
 
   let metadata = {
     ...albumTags(album),

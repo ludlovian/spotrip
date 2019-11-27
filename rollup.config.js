@@ -6,7 +6,7 @@ import commonjs from 'rollup-plugin-commonjs'
 
 export default {
   input: 'src/index.js',
-  external: ['path', 'fs', 'child_process', 'http', 'util'],
+  external: ['path', 'fs', 'child_process', 'http', 'util', 'stream'],
   plugins: [
     resolve(),
     commonjs(),

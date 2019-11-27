@@ -28,6 +28,8 @@ export default async function tagAlbum (path, opts = {}) {
 
   log.status('Calculating replay gain')
   await addReplayGain(md.tracks.map(track => join(path, track.file)))
+
+  log('Album tags written')
 }
 
 async function importCover (file, cover) {
