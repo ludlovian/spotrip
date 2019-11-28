@@ -734,8 +734,10 @@ async function recordTrack (uri, flacFile, opts = {}) {
   log(green$1(msg));
   async function capturePCM (uri, pcmFile) {
     log.status(`${green$1(msg)} ... `);
+    const md = await getData(`/track/${uri}`);
     const speedo = new Speedo(60);
-    const dataStream = await getStream(`/play/${uri}?format=raw`);
+    speedo.total = md.duration / 1e3;
+    const dataStream = await getStream(`/play/${uri}`);
     const progress = dist({
       progressInterval: 1000,
       onProgress ({ bytes, done }) {
@@ -748,36 +750,22 @@ async function recordTrack (uri, flacFile, opts = {}) {
           log.status(green$1(msg));
         } else {
           speedo.update(curr);
-          if (speedo.total) {
-            log.status(
-              [
-                `${green$1(msg)} - `,
-                `${time(curr)}  `,
-                `of ${time(speedo.total)}  `,
-                `eta ${time(speedo.eta())} `
-              ].join('')
-            );
-          }
+          log.status(
+            [
+              `${green$1(msg)} - `,
+              `${time(curr)}  `,
+              `of ${time(speedo.total)}  `,
+              `eta ${time(speedo.eta())} `
+            ].join('')
+          );
         }
       }
     });
-    getLength().then(
-      length => {
-        speedo.total = length;
-      },
-      err => dataStream.emit('error', err)
-    );
     const fileStream = fs.createWriteStream(pcmFile);
     await pipeline(dataStream, progress, fileStream);
-    const receipt = await getData(`/receipt/${uri}`);
-    if (receipt.failed) {
-      throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
-    }
-    async function getLength () {
-      const { status } = await getData('/status');
-      if (status.streaming) return status.length
-      await delay(500);
-      return getLength()
+    const { streamed, error } = await getData('/status');
+    if (!streamed || error) {
+      throw new Error(`Recording of ${uri} failed: ${error}`)
     }
   }
   async function convertPCMtoFLAC (pcmFile, flacFile) {
@@ -797,7 +785,6 @@ async function recordTrack (uri, flacFile, opts = {}) {
     await exec('rm', [pcmFile]);
   }
 }
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const { cyan: cyan$1 } = kleur;
 async function recordAlbum (path$1, opts = {}) {
@@ -1040,7 +1027,7 @@ prog
     'The store for music',
     '/nas/data/media/music/albums/Classical'
   )
-  .option('--spotweb', 'The port for spotweb', 39704);
+  .option('--spotweb', 'The port for spotweb', 39705);
 prog.command('queue <album-url>', 'queue the album for ripping').action(queue);
 prog
   .command('record-track <track-uri> <dest>', 'record a track')

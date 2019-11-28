@@ -29,9 +29,12 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
 
   async function capturePCM (uri, pcmFile) {
     log.status(`${green(msg)} ... `)
-    const speedo = new Speedo(60)
 
-    const dataStream = await getStream(`/play/${uri}?format=raw`)
+    const md = await getData(`/track/${uri}`)
+    const speedo = new Speedo(60)
+    speedo.total = md.duration / 1e3
+
+    const dataStream = await getStream(`/play/${uri}`)
     const progress = progressStream({
       progressInterval: 1000,
       onProgress ({ bytes, done }) {
@@ -44,42 +47,25 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
           log.status(green(msg))
         } else {
           speedo.update(curr)
-          if (speedo.total) {
-            log.status(
-              [
-                `${green(msg)} - `,
-                `${time(curr)}  `,
-                `of ${time(speedo.total)}  `,
-                `eta ${time(speedo.eta())} `
-              ].join('')
-            )
-          }
+          log.status(
+            [
+              `${green(msg)} - `,
+              `${time(curr)}  `,
+              `of ${time(speedo.total)}  `,
+              `eta ${time(speedo.eta())} `
+            ].join('')
+          )
         }
       }
     })
-
-    // request just one status packet to get the total
-    getLength().then(
-      length => {
-        speedo.total = length
-      },
-      err => dataStream.emit('error', err)
-    )
 
     // output file & string it all together
     const fileStream = createWriteStream(pcmFile)
     await pipeline(dataStream, progress, fileStream)
 
-    const receipt = await getData(`/receipt/${uri}`)
-    if (receipt.failed) {
-      throw new Error(`Recording of ${uri} failed: ${receipt.error}`)
-    }
-
-    async function getLength () {
-      const { status } = await getData('/status')
-      if (status.streaming) return status.length
-      await delay(500)
-      return getLength()
+    const { streamed, error } = await getData('/status')
+    if (!streamed || error) {
+      throw new Error(`Recording of ${uri} failed: ${error}`)
     }
   }
 
@@ -101,5 +87,3 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
     await exec('rm', [pcmFile])
   }
 }
-
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))

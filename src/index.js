@@ -22,7 +22,7 @@ prog
     'The store for music',
     '/nas/data/media/music/albums/Classical'
   )
-  .option('--spotweb', 'The port for spotweb', 39704)
+  .option('--spotweb', 'The port for spotweb', 39705)
 
 prog.command('queue <album-url>', 'queue the album for ripping').action(queue)
 
