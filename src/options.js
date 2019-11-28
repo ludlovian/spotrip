@@ -1,5 +1,3 @@
-'use strict'
-
 class Options {
   set (opts) {
     Object.assign(this, opts)

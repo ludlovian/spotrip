@@ -1,18 +1,14 @@
-'use strict'
-
 import { basename } from 'path'
-import kleur from 'kleur'
-
-import progressStream from 'progress-stream'
 import { createWriteStream } from 'fs'
 
-import options from './options'
-import { normalizeUri, exec, pipeline, time } from './util'
-import { getStream, getData } from './spotweb'
-import log from './log'
-import Speedo from './speedo'
+import progressStream from 'progress-stream'
 
-const { green } = kleur
+import options from './options'
+import { normalizeUri, exec, pipeline } from './util'
+import { getStream, getData } from './spotweb'
+import Speedo from './speedo'
+import retry from './retry'
+import report from './report'
 
 const ONE_SECOND = 2 * 2 * 44100
 
@@ -21,14 +17,14 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
   uri = normalizeUri(uri, 'track')
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm'
 
-  let msg = basename(flacFile)
+  const msg = { name: basename(flacFile) }
 
-  await capturePCM(uri, pcmFile)
+  await retry(() => capturePCM(uri, pcmFile))
   await convertPCMtoFLAC(pcmFile, flacFile)
-  log(green(msg))
+  report.trackRecorded(msg)
 
   async function capturePCM (uri, pcmFile) {
-    log.status(`${green(msg)} ... `)
+    report.trackRecording(msg)
 
     const md = await getData(`/track/${uri}`)
     const speedo = new Speedo(60)
@@ -41,20 +37,13 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
         const curr = bytes / ONE_SECOND
         speedo.update(curr)
         if (done) {
-          const dur = speedo.taken()
-          const speed = (curr / dur).toFixed(1)
-          msg = `${msg} - ${time(curr)}  at ${speed}x`
-          log.status(green(msg))
+          msg.total = curr
+          msg.speed = (curr / speedo.taken()).toFixed(1)
+          report.trackRecordingDone(msg)
         } else {
           speedo.update(curr)
-          log.status(
-            [
-              `${green(msg)} - `,
-              `${time(curr)}  `,
-              `of ${time(speedo.total)}  `,
-              `eta ${time(speedo.eta())} `
-            ].join('')
-          )
+          Object.assign(msg, { curr, total: speedo.total, eta: speedo.eta() })
+          report.trackRecordingUpdate(msg)
         }
       }
     })
@@ -70,7 +59,7 @@ export default async function recordTrack (uri, flacFile, opts = {}) {
   }
 
   async function convertPCMtoFLAC (pcmFile, flacFile) {
-    log.status(`${green(msg)} ... converting`)
+    report.trackConverting(msg)
     await exec('flac', [
       '--silent',
       '--force',

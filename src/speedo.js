@@ -1,5 +1,3 @@
-'use strict'
-
 export default class Speedo {
   constructor ({ length = 10 } = {}) {
     this.length = length

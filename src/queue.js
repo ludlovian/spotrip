@@ -1,22 +1,17 @@
-'use strict'
-
-import kleur from 'kleur'
 import slugify from 'slugify'
 import { join, basename } from 'path'
 
 import { getData } from './spotweb'
 import options from './options'
 import { normalizeUri, exec, spawn, writeFile, readJson, exists } from './util'
-import log from './log'
 import checkoutAlbum from './checkoutAlbum'
-
-const { green, cyan } = kleur
+import report from './report'
 
 export default async function queue (uri, opts) {
   options.set(opts)
   uri = normalizeUri(uri, 'album')
 
-  log(`Queuing ${green(uri)}`)
+  report.albumQueueing(uri)
 
   const album = await getData(`/album/${uri}`)
 
@@ -55,7 +50,7 @@ export default async function queue (uri, opts) {
       '\n'
   )
 
-  log(`\nQueued ${cyan(jobName)} for ripping`)
+  report.albumQueued(jobName)
 }
 
 function slug (s) {

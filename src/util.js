@@ -1,5 +1,3 @@
-'use strict'
-
 import fs from 'fs'
 import stream from 'stream'
 import { promisify } from 'util'

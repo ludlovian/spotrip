@@ -320,94 +320,6 @@ var lib$1 = (str, isOne) => new Sade(str, isOne);
 
 var version = "0.4.1";
 
-const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
-const $ = {
-	enabled: !NODE_DISABLE_COLORS && TERM !== 'dumb' && FORCE_COLOR !== '0',
-	reset: init(0, 0),
-	bold: init(1, 22),
-	dim: init(2, 22),
-	italic: init(3, 23),
-	underline: init(4, 24),
-	inverse: init(7, 27),
-	hidden: init(8, 28),
-	strikethrough: init(9, 29),
-	black: init(30, 39),
-	red: init(31, 39),
-	green: init(32, 39),
-	yellow: init(33, 39),
-	blue: init(34, 39),
-	magenta: init(35, 39),
-	cyan: init(36, 39),
-	white: init(37, 39),
-	gray: init(90, 39),
-	grey: init(90, 39),
-	bgBlack: init(40, 49),
-	bgRed: init(41, 49),
-	bgGreen: init(42, 49),
-	bgYellow: init(43, 49),
-	bgBlue: init(44, 49),
-	bgMagenta: init(45, 49),
-	bgCyan: init(46, 49),
-	bgWhite: init(47, 49)
-};
-function run(arr, str) {
-	let i=0, tmp, beg='', end='';
-	for (; i < arr.length; i++) {
-		tmp = arr[i];
-		beg += tmp.open;
-		end += tmp.close;
-		if (str.includes(tmp.close)) {
-			str = str.replace(tmp.rgx, tmp.close + tmp.open);
-		}
-	}
-	return beg + str + end;
-}
-function chain(has, keys) {
-	let ctx = { has, keys };
-	ctx.reset = $.reset.bind(ctx);
-	ctx.bold = $.bold.bind(ctx);
-	ctx.dim = $.dim.bind(ctx);
-	ctx.italic = $.italic.bind(ctx);
-	ctx.underline = $.underline.bind(ctx);
-	ctx.inverse = $.inverse.bind(ctx);
-	ctx.hidden = $.hidden.bind(ctx);
-	ctx.strikethrough = $.strikethrough.bind(ctx);
-	ctx.black = $.black.bind(ctx);
-	ctx.red = $.red.bind(ctx);
-	ctx.green = $.green.bind(ctx);
-	ctx.yellow = $.yellow.bind(ctx);
-	ctx.blue = $.blue.bind(ctx);
-	ctx.magenta = $.magenta.bind(ctx);
-	ctx.cyan = $.cyan.bind(ctx);
-	ctx.white = $.white.bind(ctx);
-	ctx.gray = $.gray.bind(ctx);
-	ctx.grey = $.grey.bind(ctx);
-	ctx.bgBlack = $.bgBlack.bind(ctx);
-	ctx.bgRed = $.bgRed.bind(ctx);
-	ctx.bgGreen = $.bgGreen.bind(ctx);
-	ctx.bgYellow = $.bgYellow.bind(ctx);
-	ctx.bgBlue = $.bgBlue.bind(ctx);
-	ctx.bgMagenta = $.bgMagenta.bind(ctx);
-	ctx.bgCyan = $.bgCyan.bind(ctx);
-	ctx.bgWhite = $.bgWhite.bind(ctx);
-	return ctx;
-}
-function init(open, close) {
-	let blk = {
-		open: `\x1b[${open}m`,
-		close: `\x1b[${close}m`,
-		rgx: new RegExp(`\\x1b\\[${close}m`, 'g')
-	};
-	return function (txt) {
-		if (this !== void 0 && this.has !== void 0) {
-			this.has.includes(open) || (this.has.push(open),this.keys.push(blk));
-			return txt === void 0 ? this : $.enabled ? run(this.keys, txt+'') : txt+'';
-		}
-		return txt === void 0 ? chain([open], [blk]) : $.enabled ? run([blk], txt+'') : txt+'';
-	};
-}
-var kleur = $;
-
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function createCommonjsModule(fn, module) {
@@ -527,6 +439,94 @@ function time (n) {
   return `${mn}:${sc}`
 }
 
+const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
+const $ = {
+	enabled: !NODE_DISABLE_COLORS && TERM !== 'dumb' && FORCE_COLOR !== '0',
+	reset: init(0, 0),
+	bold: init(1, 22),
+	dim: init(2, 22),
+	italic: init(3, 23),
+	underline: init(4, 24),
+	inverse: init(7, 27),
+	hidden: init(8, 28),
+	strikethrough: init(9, 29),
+	black: init(30, 39),
+	red: init(31, 39),
+	green: init(32, 39),
+	yellow: init(33, 39),
+	blue: init(34, 39),
+	magenta: init(35, 39),
+	cyan: init(36, 39),
+	white: init(37, 39),
+	gray: init(90, 39),
+	grey: init(90, 39),
+	bgBlack: init(40, 49),
+	bgRed: init(41, 49),
+	bgGreen: init(42, 49),
+	bgYellow: init(43, 49),
+	bgBlue: init(44, 49),
+	bgMagenta: init(45, 49),
+	bgCyan: init(46, 49),
+	bgWhite: init(47, 49)
+};
+function run(arr, str) {
+	let i=0, tmp, beg='', end='';
+	for (; i < arr.length; i++) {
+		tmp = arr[i];
+		beg += tmp.open;
+		end += tmp.close;
+		if (str.includes(tmp.close)) {
+			str = str.replace(tmp.rgx, tmp.close + tmp.open);
+		}
+	}
+	return beg + str + end;
+}
+function chain(has, keys) {
+	let ctx = { has, keys };
+	ctx.reset = $.reset.bind(ctx);
+	ctx.bold = $.bold.bind(ctx);
+	ctx.dim = $.dim.bind(ctx);
+	ctx.italic = $.italic.bind(ctx);
+	ctx.underline = $.underline.bind(ctx);
+	ctx.inverse = $.inverse.bind(ctx);
+	ctx.hidden = $.hidden.bind(ctx);
+	ctx.strikethrough = $.strikethrough.bind(ctx);
+	ctx.black = $.black.bind(ctx);
+	ctx.red = $.red.bind(ctx);
+	ctx.green = $.green.bind(ctx);
+	ctx.yellow = $.yellow.bind(ctx);
+	ctx.blue = $.blue.bind(ctx);
+	ctx.magenta = $.magenta.bind(ctx);
+	ctx.cyan = $.cyan.bind(ctx);
+	ctx.white = $.white.bind(ctx);
+	ctx.gray = $.gray.bind(ctx);
+	ctx.grey = $.grey.bind(ctx);
+	ctx.bgBlack = $.bgBlack.bind(ctx);
+	ctx.bgRed = $.bgRed.bind(ctx);
+	ctx.bgGreen = $.bgGreen.bind(ctx);
+	ctx.bgYellow = $.bgYellow.bind(ctx);
+	ctx.bgBlue = $.bgBlue.bind(ctx);
+	ctx.bgMagenta = $.bgMagenta.bind(ctx);
+	ctx.bgCyan = $.bgCyan.bind(ctx);
+	ctx.bgWhite = $.bgWhite.bind(ctx);
+	return ctx;
+}
+function init(open, close) {
+	let blk = {
+		open: `\x1b[${open}m`,
+		close: `\x1b[${close}m`,
+		rgx: new RegExp(`\\x1b\\[${close}m`, 'g')
+	};
+	return function (txt) {
+		if (this !== void 0 && this.has !== void 0) {
+			this.has.includes(open) || (this.has.push(open),this.keys.push(blk));
+			return txt === void 0 ? this : $.enabled ? run(this.keys, txt+'') : txt+'';
+		}
+		return txt === void 0 ? chain([open], [blk]) : $.enabled ? run([blk], txt+'') : txt+'';
+	};
+}
+var kleur = $;
+
 const CSI = '\u001B[';
 const CR = '\r';
 const EOL = `${CSI}0K`;
@@ -548,6 +548,49 @@ function status (string) {
 log.status = status;
 log.log = log;
 
+const { green, cyan } = kleur;
+const handlers = {
+  beforePublish: path => log(`Storing to ${path}`),
+  afterPublish: () => log('Stored'),
+  flacTrackExtracted: track => log(green(track)),
+  flacAlbumExtracted: () => log('\nExtracted'),
+  mp3TrackExtracting: name => log.status(`${name} extracting`),
+  mp3TrackConverting: name => log.status(`${name} converting`),
+  mp3TrackExtracted: track => log(green(track)),
+  mp3AlbumExtracted: () => log('\nExtracted'),
+  beforeCheckout: dir => log.status(`Copying to ${dir}`),
+  afterCheckout: dir => log(`Copied to ${dir}`),
+  albumQueueing: uri => log(`Queue ${green(uri)}`),
+  albumQueued: name => log(`\nQueued ${cyan(name)} for ripping`),
+  taggingTrack: name => log.status(`Tagging ${name}`),
+  taggingReplayGain: () => log.statue('Calculating replay gain'),
+  taggedAlbum: () => log('Album tags written'),
+  albumRecording: md => {
+    log(`Recording ${cyan(md.album)}`);
+    log(`by ${cyan(md.albumArtist)}`);
+    log(`from ${md.albumUri}`);
+    log('');
+  },
+  albumRecorded: () => log(''),
+  trackRecording: ({ name }) => log.status(`${green(name)} ... `),
+  trackRecordingUpdate: ({ name, curr, total, eta }) =>
+    log.status(
+      `${green(name)} - ${time(curr)}  of ${time(total)}  eta ${time(eta)}`
+    ),
+  trackRecordingDone: ({ name, total, speed }) =>
+    log.status(green(`${name} - ${time(total)}  at ${speed}x`)),
+  trackConverting: ({ name, total, speed }) =>
+    log.status(
+      green(`${name} - ${time(total)}  at ${speed}x`) + ' ... converting'
+    ),
+  trackRecorded: ({ name, total, speed }) =>
+    log(green(`${name} - ${time(total)}  at ${speed}x`))
+};
+function report (msg, ...data) {
+  handlers[msg](...data);
+}
+Object.keys(handlers).forEach(k => (report[k] = report.bind(null, k)));
+
 async function checkoutAlbum (path$1, opts = {}) {
   options.set(opts);
   path$1 = path.resolve(path$1);
@@ -557,7 +600,7 @@ async function checkoutAlbum (path$1, opts = {}) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const workDir = md.path.replace('/', '_');
   const workPath = path.join(options.work, 'work', workDir);
-  log.status(`Copying to ${workDir}`);
+  report.beforeCheckout(workDir);
   await exec('mkdir', ['-p', workPath]);
   await exec('rsync', [
     '--times',
@@ -566,15 +609,14 @@ async function checkoutAlbum (path$1, opts = {}) {
     path$1 + '/',
     workPath + '/'
   ]);
-  log(`Copied to ${workDir}`);
+  report.afterCheckout(workDir);
   return workPath
 }
 
-const { green, cyan } = kleur;
 async function queue (uri, opts) {
   options.set(opts);
   uri = normalizeUri(uri, 'album');
-  log(`Queuing ${green(uri)}`);
+  report.albumQueueing(uri);
   const album = await getData(`/album/${uri}`);
   let metadata = {
     ...albumTags(album),
@@ -602,7 +644,7 @@ async function queue (uri, opts) {
     ['node', ...process.execArgv, process.argv[1], 'rip', workPath].join(' ') +
       '\n'
   );
-  log(`\nQueued ${cyan(jobName)} for ripping`);
+  report.albumQueued(jobName);
 }
 function slug (s) {
   const slugOpts = { remove: /[^\w\s_-]/ };
@@ -722,18 +764,37 @@ class Speedo {
   }
 }
 
-const { green: green$1 } = kleur;
+async function retry (
+  fn,
+  { attempts = 5, delay = 60 * 1000, backoff = n => n + 60 * 1000 } = {}
+) {
+  return makeAttempt(1)
+  async function makeAttempt (n) {
+    try {
+      return fn()
+    } catch (err) {
+      if (n > attempts) throw err
+      console.error(`\nError occured: ${err.message}`);
+      console.error(`Waiting ${(delay / 1e3).toFixed()}s to retry ...`);
+      const ms = delay;
+      delay = backoff(delay);
+      return sleep(ms).then(() => makeAttempt(n + 1))
+    }
+  }
+}
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 const ONE_SECOND = 2 * 2 * 44100;
 async function recordTrack (uri, flacFile, opts = {}) {
   options.set(opts);
   uri = normalizeUri(uri, 'track');
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm';
-  let msg = path.basename(flacFile);
-  await capturePCM(uri, pcmFile);
+  const msg = { name: path.basename(flacFile) };
+  await retry(() => capturePCM(uri, pcmFile));
   await convertPCMtoFLAC(pcmFile, flacFile);
-  log(green$1(msg));
+  report.trackRecorded(msg);
   async function capturePCM (uri, pcmFile) {
-    log.status(`${green$1(msg)} ... `);
+    report.trackRecording(msg);
     const md = await getData(`/track/${uri}`);
     const speedo = new Speedo(60);
     speedo.total = md.duration / 1e3;
@@ -744,20 +805,13 @@ async function recordTrack (uri, flacFile, opts = {}) {
         const curr = bytes / ONE_SECOND;
         speedo.update(curr);
         if (done) {
-          const dur = speedo.taken();
-          const speed = (curr / dur).toFixed(1);
-          msg = `${msg} - ${time(curr)}  at ${speed}x`;
-          log.status(green$1(msg));
+          msg.total = curr;
+          msg.speed = (curr / speedo.taken()).toFixed(1);
+          report.trackRecordingDone(msg);
         } else {
           speedo.update(curr);
-          log.status(
-            [
-              `${green$1(msg)} - `,
-              `${time(curr)}  `,
-              `of ${time(speedo.total)}  `,
-              `eta ${time(speedo.eta())} `
-            ].join('')
-          );
+          Object.assign(msg, { curr, total: speedo.total, eta: speedo.eta() });
+          report.trackRecordingUpdate(msg);
         }
       }
     });
@@ -769,7 +823,7 @@ async function recordTrack (uri, flacFile, opts = {}) {
     }
   }
   async function convertPCMtoFLAC (pcmFile, flacFile) {
-    log.status(`${green$1(msg)} ... converting`);
+    report.trackConverting(msg);
     await exec('flac', [
       '--silent',
       '--force',
@@ -786,21 +840,17 @@ async function recordTrack (uri, flacFile, opts = {}) {
   }
 }
 
-const { cyan: cyan$1 } = kleur;
 async function recordAlbum (path$1, opts = {}) {
   options.set(opts);
   const md = await readJson(path.join(path$1, 'metadata.json'));
-  log(`Recording ${cyan$1(md.album)}`);
-  log(`by ${cyan$1(md.albumArtist)}`);
-  log(`from ${md.albumUri}`);
-  log('');
+  report.albumRecording(md);
   for (const track of md.tracks) {
     const flacFile = path.join(path$1, track.file);
     if (!(await exists(flacFile))) {
       await recordTrack(track.trackUri, flacFile);
     }
   }
-  log('');
+  report.albumRecorded();
 }
 
 async function tagAlbum (path$1, opts = {}) {
@@ -809,7 +859,7 @@ async function tagAlbum (path$1, opts = {}) {
   const coverFile = path.join(path$1, 'cover.jpg');
   const hasCover = await exists(coverFile);
   for (const track of md.tracks) {
-    log.status(`Tagging ${track.file}`);
+    report.taggingTrack(track.file);
     const flacFile = path.join(path$1, track.file);
     if (hasCover) {
       await importCover(flacFile, coverFile);
@@ -817,9 +867,9 @@ async function tagAlbum (path$1, opts = {}) {
     const tags = [...getTags(md), ...getTags(track)];
     await addTags(flacFile, tags);
   }
-  log.status('Calculating replay gain');
+  report.taggingReplayGain();
   await addReplayGain(md.tracks.map(track => path.join(path$1, track.file)));
-  log('Album tags written');
+  report.taggedAlbum();
 }
 async function importCover (file, cover) {
   await exec('metaflac', ['--remove', '--block-type=PICTURE', file]);
@@ -855,7 +905,7 @@ async function publishAlbum (path$1, opts = {}) {
   options.set(opts);
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const storePath = path.join(options.store, md.path);
-  log(`Storing to ${md.path}`);
+  report.beforePublish(md.path);
   await exec('mkdir', ['-p', storePath]);
   await exec('rsync', [
     '--times',
@@ -865,7 +915,7 @@ async function publishAlbum (path$1, opts = {}) {
     storePath + '/'
   ]);
   await exec('rm', ['-rf', path$1]);
-  log('Stored');
+  report.afterPublish();
 }
 
 async function ripAlbum (path, opts = {}) {
@@ -876,7 +926,6 @@ async function ripAlbum (path, opts = {}) {
   await publishAlbum(workPath);
 }
 
-const { green: green$2 } = kleur;
 async function extractMp3 (path$1, opts = {}) {
   options.set(opts);
   const tracks = await getTracks(path$1);
@@ -902,11 +951,10 @@ async function extractMp3 (path$1, opts = {}) {
       trackTotal: tracks.length,
       file: path.basename(flacFile)
     });
-    log(green$2(track));
+    report.mp3TrackExtracted(track);
   }
   await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
-  log('');
-  log('Extracted');
+  report.mp3AlbumExtracted();
 }
 async function getTracks (path) {
   const files = await readdir(path);
@@ -930,9 +978,9 @@ function getTag (prefix, rows) {
 }
 async function convertToFlac (mp3File, flacFile) {
   const pcmFile = mp3File.replace(/\.mp3$/, '') + '.pcm';
-  log.status(`${path.basename(mp3File)} extracting`);
+  report.mp3TrackExtracting(path.basename(mp3File));
   await exec('lame', ['--silent', '--decode', '-t', mp3File, pcmFile]);
-  log.status(`${path.basename(mp3File)} converting`);
+  report.mp3TrackConverting(path.basename(mp3File));
   await exec('flac', [
     '--silent',
     '--force',
@@ -948,7 +996,6 @@ async function convertToFlac (mp3File, flacFile) {
   await exec('rm', [pcmFile]);
 }
 
-const { green: green$3 } = kleur;
 async function extractFlac (path$1, opts = {}) {
   options.set(opts);
   const tracks = await getTracks$1(path$1);
@@ -973,11 +1020,10 @@ async function extractFlac (path$1, opts = {}) {
       trackTotal: tracks.length,
       file: path.basename(flacFile)
     });
-    log(green$3(track));
+    report.flacTrackExtracted(track);
   }
   await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
-  log('');
-  log('Extracted');
+  report.flacAlbumExtracted();
 }
 async function getTracks$1 (path) {
   const files = await readdir(path);

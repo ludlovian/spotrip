@@ -1,5 +1,3 @@
-'use strict'
-
 import checkoutAlbum from './checkoutAlbum'
 import recordAlbum from './recordAlbum'
 import tagAlbum from './tagAlbum'

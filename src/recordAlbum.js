@@ -1,24 +1,16 @@
-'use strict'
-
 import { join } from 'path'
-import kleur from 'kleur'
 
 import options from './options'
 import recordTrack from './recordTrack'
 import { readJson, exists } from './util'
-import log from './log'
-
-const { cyan } = kleur
+import report from './report'
 
 export default async function recordAlbum (path, opts = {}) {
   options.set(opts)
 
   const md = await readJson(join(path, 'metadata.json'))
 
-  log(`Recording ${cyan(md.album)}`)
-  log(`by ${cyan(md.albumArtist)}`)
-  log(`from ${md.albumUri}`)
-  log('')
+  report.albumRecording(md)
 
   for (const track of md.tracks) {
     const flacFile = join(path, track.file)
@@ -28,5 +20,5 @@ export default async function recordAlbum (path, opts = {}) {
     }
   }
 
-  log('')
+  report.albumRecorded()
 }

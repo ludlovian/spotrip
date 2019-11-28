@@ -1,14 +1,9 @@
-'use strict'
-
 import { join, basename } from 'path'
 import slugify from 'slugify'
-import kleur from 'kleur'
 
 import options from './options'
 import { readdir, exec, writeFile } from './util'
-import log from './log'
-
-const { green } = kleur
+import report from './report'
 
 export default async function extractMp3 (path, opts = {}) {
   options.set(opts)
@@ -39,12 +34,11 @@ export default async function extractMp3 (path, opts = {}) {
       file: basename(flacFile)
     })
 
-    log(green(track))
+    report.mp3TrackExtracted(track)
   }
   await writeFile(join(path, 'metadata.json'), JSON.stringify(md, null, 2))
 
-  log('')
-  log('Extracted')
+  report.mp3AlbumExtracted()
 }
 
 async function getTracks (path) {
@@ -73,10 +67,10 @@ function getTag (prefix, rows) {
 async function convertToFlac (mp3File, flacFile) {
   const pcmFile = mp3File.replace(/\.mp3$/, '') + '.pcm'
 
-  log.status(`${basename(mp3File)} extracting`)
+  report.mp3TrackExtracting(basename(mp3File))
   await exec('lame', ['--silent', '--decode', '-t', mp3File, pcmFile])
 
-  log.status(`${basename(mp3File)} converting`)
+  report.mp3TrackConverting(basename(mp3File))
   await exec('flac', [
     '--silent',
     '--force',

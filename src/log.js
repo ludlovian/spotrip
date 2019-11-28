@@ -1,5 +1,3 @@
-'use strict'
-
 const CSI = '\u001B['
 const CR = '\r'
 const EOL = `${CSI}0K`

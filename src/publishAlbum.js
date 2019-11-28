@@ -1,10 +1,8 @@
-'use strict'
-
 import { join } from 'path'
 
 import options from './options'
 import { readJson, exec } from './util'
-import log from './log'
+import report from './report'
 
 export default async function publishAlbum (path, opts = {}) {
   options.set(opts)
@@ -12,7 +10,7 @@ export default async function publishAlbum (path, opts = {}) {
   const md = await readJson(join(path, 'metadata.json'))
   const storePath = join(options.store, md.path)
 
-  log(`Storing to ${md.path}`)
+  report.beforePublish(md.path)
 
   await exec('mkdir', ['-p', storePath])
   await exec('rsync', [
@@ -25,5 +23,5 @@ export default async function publishAlbum (path, opts = {}) {
 
   await exec('rm', ['-rf', path])
 
-  log('Stored')
+  report.afterPublish()
 }

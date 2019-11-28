@@ -1,14 +1,9 @@
-'use strict'
-
 import { join, basename } from 'path'
 import slugify from 'slugify'
-import kleur from 'kleur'
 
 import options from './options'
 import { readdir, exec, writeFile } from './util'
-import log from './log'
-
-const { green } = kleur
+import report from './report'
 
 export default async function extractFlac (path, opts = {}) {
   options.set(opts)
@@ -40,13 +35,12 @@ export default async function extractFlac (path, opts = {}) {
       file: basename(flacFile)
     })
 
-    log(green(track))
+    report.flacTrackExtracted(track)
   }
 
   await writeFile(join(path, 'metadata.json'), JSON.stringify(md, null, 2))
 
-  log('')
-  log('Extracted')
+  report.flacAlbumExtracted()
 }
 
 async function getTracks (path) {

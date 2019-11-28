@@ -1,10 +1,8 @@
-'use strict'
-
 import { join, resolve } from 'path'
 
 import options from './options'
 import { readJson, exec } from './util'
-import log from './log'
+import report from './report'
 
 export default async function checkoutAlbum (path, opts = {}) {
   options.set(opts)
@@ -19,7 +17,7 @@ export default async function checkoutAlbum (path, opts = {}) {
   const workDir = md.path.replace('/', '_')
   const workPath = join(options.work, 'work', workDir)
 
-  log.status(`Copying to ${workDir}`)
+  report.beforeCheckout(workDir)
 
   await exec('mkdir', ['-p', workPath])
   await exec('rsync', [
@@ -30,6 +28,6 @@ export default async function checkoutAlbum (path, opts = {}) {
     workPath + '/'
   ])
 
-  log(`Copied to ${workDir}`)
+  report.afterCheckout(workDir)
   return workPath
 }

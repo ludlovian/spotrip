@@ -1,10 +1,8 @@
-'use strict'
-
 import { join } from 'path'
 
 import options from './options'
 import { readJson, exists, exec } from './util'
-import log from './log'
+import report from './report'
 
 export default async function tagAlbum (path, opts = {}) {
   options.set(opts)
@@ -14,7 +12,7 @@ export default async function tagAlbum (path, opts = {}) {
   const hasCover = await exists(coverFile)
 
   for (const track of md.tracks) {
-    log.status(`Tagging ${track.file}`)
+    report.taggingTrack(track.file)
 
     const flacFile = join(path, track.file)
 
@@ -26,10 +24,10 @@ export default async function tagAlbum (path, opts = {}) {
     await addTags(flacFile, tags)
   }
 
-  log.status('Calculating replay gain')
+  report.taggingReplayGain()
   await addReplayGain(md.tracks.map(track => join(path, track.file)))
 
-  log('Album tags written')
+  report.taggedAlbum()
 }
 
 async function importCover (file, cover) {
