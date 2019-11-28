@@ -318,7 +318,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "0.4.0";
+var version = "0.4.1";
 
 const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
 const $ = {
