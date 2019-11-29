@@ -318,7 +318,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "1.0.1";
+var version = "1.0.2";
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -794,7 +794,8 @@ async function retry (
   fn,
   { attempts = 5, delay = 60 * 1000, backoff = n => n + 60 * 1000 } = {}
 ) {
-  await makeAttempt(1);
+  const ret = await makeAttempt(1);
+  return ret
   async function makeAttempt (n) {
     try {
       return await fn()
