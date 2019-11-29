@@ -563,7 +563,7 @@ const handlers = {
   albumQueueing: uri => log(`Queue ${green(uri)}`),
   albumQueued: name => log(`\nQueued ${cyan(name)} for ripping`),
   taggingTrack: name => log.status(`Tagging ${name}`),
-  taggingReplayGain: () => log.statue('Calculating replay gain'),
+  taggingReplayGain: () => log.status('Calculating replay gain'),
   taggedAlbum: () => log('Album tags written'),
   albumRecording: md => {
     log(`Recording ${cyan(md.album)}`);
