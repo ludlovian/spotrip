@@ -2,11 +2,11 @@ export default async function retry (
   fn,
   { attempts = 5, delay = 60 * 1000, backoff = n => n + 60 * 1000 } = {}
 ) {
-  return makeAttempt(1)
+  await makeAttempt(1)
 
   async function makeAttempt (n) {
     try {
-      return fn()
+      return await fn()
     } catch (err) {
       if (n > attempts) throw err
       console.error(`\nError occured: ${err.message}`)
