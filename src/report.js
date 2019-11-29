@@ -47,7 +47,12 @@ const handlers = {
       green(`${name} - ${time(total)}  at ${speed}x`) + ' ... converting'
     ),
   trackRecorded: ({ name, total, speed }) =>
-    log(green(`${name} - ${time(total)}  at ${speed}x`))
+    log(green(`${name} - ${time(total)}  at ${speed}x`)),
+
+  daemonStatus: pid =>
+    log(pid ? `spotweb running as pid ${pid}` : 'spotweb not running'),
+  daemonStopped: () => log('spotweb stopped'),
+  daemonStarted: () => log('spotweb started')
 }
 
 export default function report (msg, ...data) {

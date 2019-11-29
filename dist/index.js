@@ -5,11 +5,11 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var path = require('path');
 var http = _interopDefault(require('http'));
+var child_process = require('child_process');
 var fs = require('fs');
 var fs__default = _interopDefault(fs);
 var stream = _interopDefault(require('stream'));
 var util = require('util');
-var child_process = require('child_process');
 
 function toArr(any) {
 	return any == null ? [] : Array.isArray(any) ? any : [any];
@@ -361,38 +361,6 @@ var slugify = createCommonjsModule(function (module, exports) {
 }));
 });
 
-class Options {
-  set (opts) {
-    Object.assign(this, opts);
-  }
-}
-const options = new Options();
-
-async function getData (path) {
-  const response = await getResponse(path);
-  response.setEncoding('utf8');
-  let data = '';
-  for await (const chunk of response) {
-    data += chunk;
-  }
-  return JSON.parse(data)
-}
-function getStream (path) {
-  return getResponse(path)
-}
-function getResponse (path) {
-  return new Promise((resolve, reject) => {
-    const { spotweb: port } = options;
-    http
-      .get(`http://localhost:${port}${path}`, resolve)
-      .once('error', reject)
-      .end();
-  }).catch(err => {
-    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
-    throw err
-  })
-}
-
 const pipeline = util.promisify(stream.pipeline);
 const exec = util.promisify(child_process.execFile);
 const writeFile = fs__default.promises.writeFile;
@@ -438,6 +406,13 @@ function time (n) {
   const sc = (n % 60).toString().padStart(2, '0');
   return `${mn}:${sc}`
 }
+
+class Options {
+  set (opts) {
+    Object.assign(this, opts);
+  }
+}
+const options = new Options();
 
 const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
 const $ = {
@@ -584,12 +559,63 @@ const handlers = {
       green(`${name} - ${time(total)}  at ${speed}x`) + ' ... converting'
     ),
   trackRecorded: ({ name, total, speed }) =>
-    log(green(`${name} - ${time(total)}  at ${speed}x`))
+    log(green(`${name} - ${time(total)}  at ${speed}x`)),
+  daemonStatus: pid =>
+    log(pid ? `spotweb running as pid ${pid}` : 'spotweb not running'),
+  daemonStopped: () => log('spotweb stopped'),
+  daemonStarted: () => log('spotweb started')
 };
 function report (msg, ...data) {
   handlers[msg](...data);
 }
 Object.keys(handlers).forEach(k => (report[k] = report.bind(null, k)));
+
+async function getData (path) {
+  const response = await getResponse(path);
+  response.setEncoding('utf8');
+  let data = '';
+  for await (const chunk of response) {
+    data += chunk;
+  }
+  return JSON.parse(data)
+}
+function getStream (path) {
+  return getResponse(path)
+}
+function getResponse (path) {
+  return new Promise((resolve, reject) => {
+    const port = options['spotweb-port'];
+    http
+      .get(`http://localhost:${port}${path}`, resolve)
+      .once('error', reject)
+      .end();
+  }).catch(err => {
+    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
+    throw err
+  })
+}
+async function daemonStatus (opts = {}) {
+  options.set(opts);
+  const { stdout } = await exec('pgrep', [
+    '-fx',
+    options['spotweb-command']
+  ]).catch(err => {
+    if (err.code !== 1) throw err
+    return err
+  });
+  report.daemonStatus(stdout.trim());
+}
+async function stopDaemon (opts = {}) {
+  options.set(opts);
+  await exec('pkill', ['-fx', options['spotweb-command']]);
+  report.daemonStopped();
+}
+async function startDaemon (opts = {}) {
+  options.set(opts);
+  const [cmd, ...args] = options['spotweb-command'].split(' ');
+  child_process.spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+  report.daemonStarted();
+}
 
 async function checkoutAlbum (path$1, opts = {}) {
   options.set(opts);
@@ -1073,7 +1099,12 @@ prog
     'The store for music',
     '/nas/data/media/music/albums/Classical'
   )
-  .option('--spotweb', 'The port for spotweb', 39705);
+  .option('--spotweb-port', 'The port for spotweb', 39705)
+  .option(
+    '--spotweb-command',
+    'The command for spotweb',
+    '/home/alan/env/spotweb/bin/python3 /home/alan/dev/spotweb/spotweb.py'
+  );
 prog.command('queue <album-url>', 'queue the album for ripping').action(queue);
 prog
   .command('record-track <track-uri> <dest>', 'record a track')
@@ -1087,6 +1118,9 @@ prog.command('publish <dir>', 'publish the album').action(publishAlbum);
 prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum);
 prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3);
 prog.command('extract-flac <dir>', 'converts FLAC dir').action(extractFlac);
+prog.command('daemon-status', 'report on spotweb').action(daemonStatus);
+prog.command('daemon-stop', 'stop spotweb').action(stopDaemon);
+prog.command('daemon-start', 'start spotweb').action(startDaemon);
 const parse$1 = prog.parse(process.argv, { lazy: true });
 if (parse$1) {
   const { handler, args } = parse$1;

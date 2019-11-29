@@ -11,6 +11,7 @@ import publishAlbum from './publishAlbum'
 import checkoutAlbum from './checkoutAlbum'
 import extractMp3 from './extractMp3'
 import extractFlac from './extractFlac'
+import { daemonStatus, startDaemon, stopDaemon } from './spotweb'
 
 const prog = sade('spotrip')
 
@@ -22,7 +23,12 @@ prog
     'The store for music',
     '/nas/data/media/music/albums/Classical'
   )
-  .option('--spotweb', 'The port for spotweb', 39705)
+  .option('--spotweb-port', 'The port for spotweb', 39705)
+  .option(
+    '--spotweb-command',
+    'The command for spotweb',
+    '/home/alan/env/spotweb/bin/python3 /home/alan/dev/spotweb/spotweb.py'
+  )
 
 prog.command('queue <album-url>', 'queue the album for ripping').action(queue)
 
@@ -45,6 +51,10 @@ prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum)
 prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3)
 
 prog.command('extract-flac <dir>', 'converts FLAC dir').action(extractFlac)
+
+prog.command('daemon-status', 'report on spotweb').action(daemonStatus)
+prog.command('daemon-stop', 'stop spotweb').action(stopDaemon)
+prog.command('daemon-start', 'start spotweb').action(startDaemon)
 
 const parse = prog.parse(process.argv, { lazy: true })
 if (parse) {

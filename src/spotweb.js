@@ -1,6 +1,9 @@
 import http from 'http'
+import { spawn } from 'child_process'
 
+import { exec } from './util'
 import options from './options'
+import report from './report'
 
 export async function getData (path) {
   const response = await getResponse(path)
@@ -18,7 +21,7 @@ export function getStream (path) {
 
 function getResponse (path) {
   return new Promise((resolve, reject) => {
-    const { spotweb: port } = options
+    const port = options['spotweb-port']
     http
       .get(`http://localhost:${port}${path}`, resolve)
       .once('error', reject)
@@ -27,4 +30,30 @@ function getResponse (path) {
     if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
     throw err
   })
+}
+
+export async function daemonStatus (opts = {}) {
+  options.set(opts)
+
+  const { stdout } = await exec('pgrep', [
+    '-fx',
+    options['spotweb-command']
+  ]).catch(err => {
+    if (err.code !== 1) throw err
+    return err
+  })
+  report.daemonStatus(stdout.trim())
+}
+
+export async function stopDaemon (opts = {}) {
+  options.set(opts)
+  await exec('pkill', ['-fx', options['spotweb-command']])
+  report.daemonStopped()
+}
+
+export async function startDaemon (opts = {}) {
+  options.set(opts)
+  const [cmd, ...args] = options['spotweb-command'].split(' ')
+  spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref()
+  report.daemonStarted()
 }
