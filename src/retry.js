@@ -2,7 +2,8 @@ export default async function retry (
   fn,
   { attempts = 5, delay = 60 * 1000, backoff = n => n + 60 * 1000 } = {}
 ) {
-  await makeAttempt(1)
+  const ret = await makeAttempt(1)
+  return ret
 
   async function makeAttempt (n) {
     try {
