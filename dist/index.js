@@ -318,7 +318,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "1.0.3";
+var version = "1.1.0";
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -594,8 +594,7 @@ function getResponse (path) {
     throw err
   })
 }
-async function daemonStatus (opts = {}) {
-  options.set(opts);
+async function daemonStatus () {
   const { stdout } = await exec('pgrep', [
     '-fx',
     options['spotweb-command']
@@ -605,20 +604,17 @@ async function daemonStatus (opts = {}) {
   });
   report.daemonStatus(stdout.trim());
 }
-async function stopDaemon (opts = {}) {
-  options.set(opts);
+async function stopDaemon () {
   await exec('pkill', ['-fx', options['spotweb-command']]);
   report.daemonStopped();
 }
-async function startDaemon (opts = {}) {
-  options.set(opts);
+async function startDaemon () {
   const [cmd, ...args] = options['spotweb-command'].split(' ');
   child_process.spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
   report.daemonStarted();
 }
 
-async function checkoutAlbum (path$1, opts = {}) {
-  options.set(opts);
+async function checkoutAlbum (path$1) {
   path$1 = path.resolve(path$1);
   if (path$1.startsWith(options.work)) {
     return path$1
@@ -639,8 +635,7 @@ async function checkoutAlbum (path$1, opts = {}) {
   return workPath
 }
 
-async function queue (uri, opts) {
-  options.set(opts);
+async function queue (uri) {
   uri = normalizeUri(uri, 'album');
   report.albumQueueing(uri);
   const album = await getData(`/album/${uri}`);
@@ -818,8 +813,7 @@ async function retry (
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const ONE_SECOND = 2 * 2 * 44100;
-async function recordTrack (uri, flacFile, opts = {}) {
-  options.set(opts);
+async function recordTrack (uri, flacFile) {
   uri = normalizeUri(uri, 'track');
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm';
   const msg = { name: path.basename(flacFile) };
@@ -873,8 +867,7 @@ async function recordTrack (uri, flacFile, opts = {}) {
   }
 }
 
-async function recordAlbum (path$1, opts = {}) {
-  options.set(opts);
+async function recordAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   report.albumRecording(md);
   for (const track of md.tracks) {
@@ -886,8 +879,7 @@ async function recordAlbum (path$1, opts = {}) {
   report.albumRecorded();
 }
 
-async function tagAlbum (path$1, opts = {}) {
-  options.set(opts);
+async function tagAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const coverFile = path.join(path$1, 'cover.jpg');
   const hasCover = await exists(coverFile);
@@ -934,8 +926,7 @@ async function addReplayGain (files) {
   await exec('metaflac', ['--add-replay-gain', ...files]);
 }
 
-async function publishAlbum (path$1, opts = {}) {
-  options.set(opts);
+async function publishAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const storePath = path.join(options.store, md.path);
   report.beforePublish(md.path);
@@ -951,16 +942,14 @@ async function publishAlbum (path$1, opts = {}) {
   report.afterPublish();
 }
 
-async function ripAlbum (path, opts = {}) {
-  options.set(opts);
+async function ripAlbum (path) {
   const workPath = await checkoutAlbum(path);
   await recordAlbum(workPath);
   await tagAlbum(workPath);
   await publishAlbum(workPath);
 }
 
-async function extractMp3 (path$1, opts = {}) {
-  options.set(opts);
+async function extractMp3 (path$1) {
   const tracks = await getTracks(path$1);
   const md = {};
   let trackNumber = 1;
@@ -1029,8 +1018,7 @@ async function convertToFlac (mp3File, flacFile) {
   await exec('rm', [pcmFile]);
 }
 
-async function extractFlac (path$1, opts = {}) {
-  options.set(opts);
+async function extractFlac (path$1) {
   const tracks = await getTracks$1(path$1);
   const md = {};
   let trackNumber = 1;
@@ -1097,6 +1085,17 @@ async function readTrackTags$1 (file) {
   return tags
 }
 
+async function showAlbum (uri) {
+  uri = normalizeUri(uri, 'album');
+  const md = await getData(`/album/${uri}`);
+  console.log(JSON.stringify(md, null, 2));
+}
+async function showTrack (uri) {
+  uri = normalizeUri(uri, 'track');
+  const md = await getData(`/track/${uri}`);
+  console.log(JSON.stringify(md, null, 2));
+}
+
 const prog = lib$1('spotrip');
 prog
   .version(version)
@@ -1112,25 +1111,66 @@ prog
     'The command for spotweb',
     '/home/alan/env/spotweb/bin/python3 /home/alan/dev/spotweb/spotweb.py'
   );
-prog.command('queue <album-url>', 'queue the album for ripping').action(queue);
 prog
-  .command('record-track <track-uri> <dest>', 'record a track')
+  .command('queue <album-url>')
+  .describe('queue the album for ripping')
+  .action(queue);
+prog
+  .command('record track <track-uri> <dest>')
+  .describe('record a track')
   .action(recordTrack);
-prog.command('record-album <dir>', 'record an album').action(recordAlbum);
-prog.command('retag <dir>', 'set tags for an album').action(tagAlbum);
 prog
-  .command('checkout <dir>', 'checkout a working copy of the album')
+  .command('record album <dir>')
+  .describe('record an album')
+  .action(recordAlbum);
+prog
+  .command('tag <dir>')
+  .describe('set tags for an album')
+  .action(tagAlbum);
+prog
+  .command('checkout <dir>')
+  .describe('checkout a working copy of the album')
   .action(checkoutAlbum);
-prog.command('publish <dir>', 'publish the album').action(publishAlbum);
-prog.command('rip <dir>', 'record, tag and store an album').action(ripAlbum);
-prog.command('extract-mp3 <dir>', 'converts MP3 dir').action(extractMp3);
-prog.command('extract-flac <dir>', 'converts FLAC dir').action(extractFlac);
-prog.command('daemon-status', 'report on spotweb').action(daemonStatus);
-prog.command('daemon-stop', 'stop spotweb').action(stopDaemon);
-prog.command('daemon-start', 'start spotweb').action(startDaemon);
+prog
+  .command('publish <dir>')
+  .describe('publish the album')
+  .action(publishAlbum);
+prog
+  .command('rip <dir>')
+  .describe('record, tag and store an album')
+  .action(ripAlbum);
+prog
+  .command('extract-mp3 <dir>')
+  .describe('converts MP3 dir')
+  .action(extractMp3);
+prog
+  .command('extract-flac <dir>')
+  .describe('converts FLAC dir')
+  .action(extractFlac);
+prog
+  .command('daemon status')
+  .describe('report on spotweb')
+  .action(daemonStatus);
+prog
+  .command('daemon stop')
+  .describe('stop spotweb')
+  .action(stopDaemon);
+prog
+  .command('daemon start')
+  .describe('start spotweb')
+  .action(startDaemon);
+prog
+  .command('show album <uri>')
+  .describe('show the metadata for an album')
+  .action(showAlbum);
+prog
+  .command('show track <uri>')
+  .describe('show the metadata for a track')
+  .action(showTrack);
 const parse$1 = prog.parse(process.argv, { lazy: true });
 if (parse$1) {
   const { handler, args } = parse$1;
+  options.set(args.pop());
   handler.apply(null, args).catch(err => {
     console.error('An unexpected error occured');
     console.error(err);
