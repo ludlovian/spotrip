@@ -1,13 +1,10 @@
 import { join, basename } from 'path'
 import slugify from 'slugify'
 
-import options from './options'
 import { readdir, exec, writeFile } from './util'
 import report from './report'
 
-export default async function extractMp3 (path, opts = {}) {
-  options.set(opts)
-
+export default async function extractMp3 (path) {
   const tracks = await getTracks(path)
 
   const md = {}

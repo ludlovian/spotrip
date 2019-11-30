@@ -1,12 +1,9 @@
 import { join } from 'path'
 
-import options from './options'
 import { readJson, exists, exec } from './util'
 import report from './report'
 
-export default async function tagAlbum (path, opts = {}) {
-  options.set(opts)
-
+export default async function tagAlbum (path) {
   const md = await readJson(join(path, 'metadata.json'))
   const coverFile = join(path, 'cover.jpg')
   const hasCover = await exists(coverFile)

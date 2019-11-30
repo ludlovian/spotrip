@@ -4,9 +4,7 @@ import options from './options'
 import { readJson, exec } from './util'
 import report from './report'
 
-export default async function checkoutAlbum (path, opts = {}) {
-  options.set(opts)
-
+export default async function checkoutAlbum (path) {
   path = resolve(path)
 
   if (path.startsWith(options.work)) {

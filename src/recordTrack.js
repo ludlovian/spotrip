@@ -3,7 +3,6 @@ import { createWriteStream } from 'fs'
 
 import progressStream from 'progress-stream'
 
-import options from './options'
 import { normalizeUri, exec, pipeline } from './util'
 import { getStream, getData } from './spotweb'
 import Speedo from './speedo'
@@ -12,8 +11,7 @@ import report from './report'
 
 const ONE_SECOND = 2 * 2 * 44100
 
-export default async function recordTrack (uri, flacFile, opts = {}) {
-  options.set(opts)
+export default async function recordTrack (uri, flacFile) {
   uri = normalizeUri(uri, 'track')
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm'
 

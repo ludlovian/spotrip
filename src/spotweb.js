@@ -32,9 +32,7 @@ function getResponse (path) {
   })
 }
 
-export async function daemonStatus (opts = {}) {
-  options.set(opts)
-
+export async function daemonStatus () {
   const { stdout } = await exec('pgrep', [
     '-fx',
     options['spotweb-command']
@@ -45,14 +43,12 @@ export async function daemonStatus (opts = {}) {
   report.daemonStatus(stdout.trim())
 }
 
-export async function stopDaemon (opts = {}) {
-  options.set(opts)
+export async function stopDaemon () {
   await exec('pkill', ['-fx', options['spotweb-command']])
   report.daemonStopped()
 }
 
-export async function startDaemon (opts = {}) {
-  options.set(opts)
+export async function startDaemon () {
   const [cmd, ...args] = options['spotweb-command'].split(' ')
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref()
   report.daemonStarted()

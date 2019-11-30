@@ -7,8 +7,7 @@ import { normalizeUri, exec, spawn, writeFile, readJson, exists } from './util'
 import checkoutAlbum from './checkoutAlbum'
 import report from './report'
 
-export default async function queue (uri, opts) {
-  options.set(opts)
+export default async function queue (uri) {
   uri = normalizeUri(uri, 'album')
 
   report.albumQueueing(uri)
