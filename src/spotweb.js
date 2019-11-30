@@ -26,10 +26,18 @@ function getResponse (path) {
       .get(`http://localhost:${port}${path}`, resolve)
       .once('error', reject)
       .end()
-  }).catch(err => {
-    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
-    throw err
-  })
+  }).then(
+    res => {
+      if (res.statusCode !== 200) {
+        throw new Error(`${res.statusCode} - ${res.statusMessage}`)
+      }
+      return res
+    },
+    err => {
+      if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
+      throw err
+    }
+  )
 }
 
 export async function daemonStatus () {
