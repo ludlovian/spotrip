@@ -22,12 +22,12 @@
     "kleur": "^3.0.3",
     "progress-stream": "github:ludlovian/progress-stream",
     "sade": "^1.6.1",
-    "slugify": "^1.3.5"
+    "slugify": "^1.3.6"
   },
   "devDependencies": {
     "esm": "^3.2.25",
-    "prettier-standard": "^15.0.1",
-    "rollup": "^1.23.1",
+    "prettier-standard": "^16.0.0",
+    "rollup": "^1.27.5",
     "rollup-plugin-cleanup": "^3.1.1",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-json": "^4.0.0",
