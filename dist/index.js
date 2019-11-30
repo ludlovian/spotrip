@@ -318,7 +318,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "1.1.0";
+var version = "1.1.1";
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -589,10 +589,18 @@ function getResponse (path) {
       .get(`http://localhost:${port}${path}`, resolve)
       .once('error', reject)
       .end();
-  }).catch(err => {
-    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
-    throw err
-  })
+  }).then(
+    res => {
+      if (res.statusCode !== 200) {
+        throw new Error(`${res.statusCode} - ${res.statusMessage}`)
+      }
+      return res
+    },
+    err => {
+      if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
+      throw err
+    }
+  )
 }
 async function daemonStatus () {
   const { stdout } = await exec('pgrep', [
