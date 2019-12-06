@@ -1,17 +1,36 @@
-import slugify from 'slugify'
-import { join, basename } from 'path'
+import { join } from 'path'
 
+import slugify from 'slugify'
+
+import { exec, spawn, writeFile, readJson, exists } from './util'
 import { getData } from './spotweb'
 import options from './options'
-import { normalizeUri, exec, spawn, writeFile, readJson, exists } from './util'
-import checkoutAlbum from './checkoutAlbum'
-import report from './report'
 
-export default async function queue (uri) {
-  uri = normalizeUri(uri, 'album')
+export async function copyToStore (path, storePath) {
+  await exec('mkdir', ['-p', storePath])
+  await exec('rsync', [
+    '--times',
+    '--recursive',
+    '--omit-dir-times',
+    path + '/',
+    storePath + '/'
+  ])
 
-  report.albumQueueing(uri)
+  await exec('rm', ['-rf', path])
+}
 
+export async function copyFromStore (storePath, workPath) {
+  await exec('mkdir', ['-p', workPath])
+  await exec('rsync', [
+    '--times',
+    '--recursive',
+    '--omit-dir-times',
+    storePath + '/',
+    workPath + '/'
+  ])
+}
+
+export async function downloadMetadata (uri) {
   const album = await getData(`/album/${uri}`)
 
   let metadata = {
@@ -20,7 +39,6 @@ export default async function queue (uri) {
   }
 
   const jsonFile = join(options.work, 'work', uri.replace(/.*:/, '') + '.json')
-
   await writeFile(jsonFile, JSON.stringify(metadata, null, 2))
   await spawn('vi', [jsonFile], { stdio: 'inherit' }).done
 
@@ -39,17 +57,7 @@ export default async function queue (uri) {
     JSON.stringify(metadata, null, 2)
   )
 
-  const workPath = await checkoutAlbum(storePath)
-  const jobName = basename(workPath)
-  const queueFile = join(options.work, 'queue', jobName)
-
-  await writeFile(
-    queueFile,
-    ['node', ...process.execArgv, process.argv[1], 'rip', workPath].join(' ') +
-      '\n'
-  )
-
-  report.albumQueued(jobName)
+  return storePath
 }
 
 function slug (s) {
@@ -105,7 +113,7 @@ function trackTags (track, album) {
 }
 
 function countDiscs (album) {
-  const discNumbers = album.tracks.map(t => t.disc).filter(d => !!d)
+  const discNumbers = album.tracks.map(t => t.disc).filter(Boolean)
   return uniq(discNumbers).length
 }
 
@@ -114,24 +122,5 @@ function countTracks (album, discNumber) {
 }
 
 function uniq (list) {
-  const s = new Set(list)
-  return [...s]
+  return [...new Set(list)]
 }
-
-/*
- * TAGS
- *
- * ALBUMARTIST
- * ALBUM
- * GENRE
- * YEAR
- * ALBUMURI
- * DISCTOTAL (if multi disc)
- *
- * TITLE
- * ARTIST
- * TRACKNUMBER
- * DISCNUMBER (if multi disc)
- * TRACKTOTAL (of current disc)
- * TRACKURI
- */

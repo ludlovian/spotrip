@@ -1,3 +1,8 @@
+// Units:
+//  curr / total - things
+//  rate - things per second
+//  eta / taken - seconds
+
 export default class Speedo {
   constructor ({ length = 10 } = {}) {
     this.length = length
@@ -17,7 +22,7 @@ export default class Speedo {
     if (this.readings.length < 2) return null
     const last = this.readings[this.readings.length - 1]
     const first = this.readings[0]
-    return (1e3 * (last[1] - first[1])) / (last[0] - first[0])
+    return ((last[1] - first[1]) * 1e3) / (last[0] - first[0])
   }
 
   percent () {

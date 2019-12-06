@@ -1,62 +1,62 @@
 import kleur from 'kleur'
+import ms from 'ms'
+
+import EventEmitter from 'events'
 
 import log from './log'
 import { time } from './util'
 
 const { green, cyan } = kleur
 
-const handlers = {
-  beforePublish: path => log(`Storing to ${path}`),
-  afterPublish: () => log('Stored'),
+const report = new EventEmitter()
+export default report
 
-  flacTrackExtracted: track => log(green(track)),
-  flacAlbumExtracted: () => log('\nExtracted'),
-
-  mp3TrackExtracting: name => log.status(`${name} extracting`),
-  mp3TrackConverting: name => log.status(`${name} converting`),
-  mp3TrackExtracted: track => log(green(track)),
-  mp3AlbumExtracted: () => log('\nExtracted'),
-
-  beforeCheckout: dir => log.status(`Copying to ${dir}`),
-  afterCheckout: dir => log(`Copied to ${dir}`),
-
-  albumQueueing: uri => log(`Queue ${green(uri)}`),
-  albumQueued: name => log(`\nQueued ${cyan(name)} for ripping`),
-
-  taggingTrack: name => log.status(`Tagging ${name}`),
-  taggingReplayGain: () => log.status('Calculating replay gain'),
-  taggedAlbum: () => log('Album tags written'),
-
-  albumRecording: md => {
+report
+  .on('track.capturing.start', name => {
+    log.prefix = `${green(name)} `
+    log.status('... ')
+  })
+  .on('track.capturing.update', ({ curr, total, eta }) =>
+    log.status(` - ${time(curr)}  of ${time(total)}  eta ${time(eta)}`)
+  )
+  .on('track.capturing.done', ({ name, total, speed }) => {
+    log.prefix += ` - ${time(total)}  at ${speed.toFixed(1)}x`
+    log.status(' ')
+  })
+  .on('track.converting.start', () => log.status(' ... converting'))
+  .on('track.converting.done', () => {
+    log('')
+    log.prefix = ''
+  })
+  .on('track.tagging', name => log.status(`Tagging ${name}`))
+  .on('album.recording.start', md => {
     log(`Recording ${cyan(md.album)}`)
     log(`by ${cyan(md.albumArtist)}`)
     log(`from ${md.albumUri}`)
     log('')
-  },
-  albumRecorded: () => log(''),
-
-  trackRecording: ({ name }) => log.status(`${green(name)} ... `),
-  trackRecordingUpdate: ({ name, curr, total, eta }) =>
-    log.status(
-      `${green(name)} - ${time(curr)}  of ${time(total)}  eta ${time(eta)}`
-    ),
-  trackRecordingDone: ({ name, total, speed }) =>
-    log.status(green(`${name} - ${time(total)}  at ${speed}x`)),
-  trackConverting: ({ name, total, speed }) =>
-    log.status(
-      green(`${name} - ${time(total)}  at ${speed}x`) + ' ... converting'
-    ),
-  trackRecorded: ({ name, total, speed }) =>
-    log(green(`${name} - ${time(total)}  at ${speed}x`)),
-
-  daemonStatus: pid =>
-    log(pid ? `spotweb running as pid ${pid}` : 'spotweb not running'),
-  daemonStopped: () => log('spotweb stopped'),
-  daemonStarted: () => log('spotweb started')
-}
-
-export default function report (msg, ...data) {
-  handlers[msg](...data)
-}
-
-Object.keys(handlers).forEach(k => (report[k] = report.bind(null, k)))
+  })
+  .on('album.recording.done', () => log(''))
+  .on('album.replayGain.start', () => log.status('Calculating replay gain'))
+  .on('album.replayGain.done', () => log('Album tags written'))
+  .on('album.publishing.start', path => log(`Storing to ${path}`))
+  .on('album.publishing.done', () => log('Stored'))
+  .on('album.checkout.start', dir => log.status(`Copying to ${dir}`))
+  .on('album.checkout.done', dir => log(`Copied to ${dir}`))
+  .on('album.queue.start', uri => log(`Queue ${green(uri)}`))
+  .on('album.queue.done', name => log(`\nQueued ${cyan(name)} for ripping`))
+  .on('daemon.status', pid =>
+    log(pid ? `spotweb running as pid ${pid}` : 'spotweb not running')
+  )
+  .on('daemon.stopped', () => log('spotweb stopped'))
+  .on('daemon.started', () => log('spotweb started'))
+  .on('retry', ({ delay, err }) => {
+    console.error(
+      `\nError occured: ${err.message}\nWaiting ${ms(delay)} to retry...`
+    )
+  })
+  .on('extract.mp3.track.start', name => log.status(`${name} extracting`))
+  .on('extract.mp3.track.convert', name => log.status(`${name} converting`))
+  .on('extract.mp3.track.done', track => log(green(track)))
+  .on('extract.mp3.album.done', () => log('\nExtracted'))
+  .on('extract.flac.track', track => log(green(track)))
+  .on('extract.flac.album', () => log('\nExtracted'))

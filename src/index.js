@@ -2,16 +2,20 @@
 
 import sade from 'sade'
 import { version } from '../package.json'
-import queue from './queue'
-import recordTrack from './recordTrack'
-import recordAlbum from './recordAlbum'
-import ripAlbum from './ripAlbum'
-import tagAlbum from './tagAlbum'
-import publishAlbum from './publishAlbum'
-import checkoutAlbum from './checkoutAlbum'
+import {
+  queueAlbum,
+  recordTrack,
+  recordAlbum,
+  ripAlbum,
+  tagAlbum,
+  publishAlbum,
+  checkoutAlbum,
+  daemonStatus,
+  daemonStart,
+  daemonStop
+} from './commands'
 import extractMp3 from './extractMp3'
 import extractFlac from './extractFlac'
-import { daemonStatus, startDaemon, stopDaemon } from './spotweb'
 import { showAlbum, showTrack } from './show'
 import options from './options'
 
@@ -35,7 +39,7 @@ prog
 prog
   .command('queue <album-url>')
   .describe('queue the album for ripping')
-  .action(queue)
+  .action(queueAlbum)
 prog
   .command('record track <track-uri> <dest>')
   .describe('record a track')
@@ -61,11 +65,11 @@ prog
   .describe('record, tag and store an album')
   .action(ripAlbum)
 prog
-  .command('extract-mp3 <dir>')
+  .command('extract mp3 <dir>')
   .describe('converts MP3 dir')
   .action(extractMp3)
 prog
-  .command('extract-flac <dir>')
+  .command('extract flac <dir>')
   .describe('converts FLAC dir')
   .action(extractFlac)
 prog
@@ -75,11 +79,11 @@ prog
 prog
   .command('daemon stop')
   .describe('stop spotweb')
-  .action(stopDaemon)
+  .action(daemonStop)
 prog
   .command('daemon start')
   .describe('start spotweb')
-  .action(startDaemon)
+  .action(daemonStart)
 prog
   .command('show album <uri>')
   .describe('show the metadata for an album')

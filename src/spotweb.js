@@ -3,7 +3,6 @@ import { spawn } from 'child_process'
 
 import { exec } from './util'
 import options from './options'
-import report from './report'
 
 export async function getData (path) {
   const response = await getResponse(path)
@@ -40,24 +39,21 @@ function getResponse (path) {
   )
 }
 
-export async function daemonStatus () {
-  const { stdout } = await exec('pgrep', [
-    '-fx',
-    options['spotweb-command']
-  ]).catch(err => {
-    if (err.code !== 1) throw err
-    return err
-  })
-  report.daemonStatus(stdout.trim())
+export function getSpotwebPid () {
+  return exec('pgrep', ['-fx', options['spotweb-command']]).then(
+    ({ stdout }) => stdout.trim(),
+    err => {
+      if (err.code) return ''
+      throw err
+    }
+  )
 }
 
-export async function stopDaemon () {
+export async function stopSpotweb () {
   await exec('pkill', ['-fx', options['spotweb-command']])
-  report.daemonStopped()
 }
 
-export async function startDaemon () {
+export async function startSpotweb () {
   const [cmd, ...args] = options['spotweb-command'].split(' ')
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref()
-  report.daemonStarted()
 }

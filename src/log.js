@@ -2,25 +2,17 @@ const CSI = '\u001B['
 const CR = '\r'
 const EOL = `${CSI}0K`
 
-var dirty = false
-
 function log (string) {
-  if (dirty) {
-    string = CR + EOL + string
-    dirty = false
-  }
-  console.log(string)
+  log.status(string + '\n')
+  log.dirty = false
 }
 
-function status (string) {
-  if (dirty) {
-    string = CR + EOL + string
-  }
-  process.stdout.write(string)
-  dirty = true
+log.status = string => {
+  const clear = log.dirty ? CR + EOL : ''
+  process.stdout.write(`${clear}${log.prefix}${string}`)
+  log.dirty = true
 }
 
-log.status = status
-log.log = log
+log.prefix = ''
 
 export default log

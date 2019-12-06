@@ -1,22 +1,31 @@
-export default async function retry (
-  fn,
-  { attempts = 5, delay = 60 * 1000, backoff = n => n + 60 * 1000 } = {}
-) {
-  const ret = await makeAttempt(1)
-  return ret
+import ms from 'ms'
 
-  async function makeAttempt (n) {
-    try {
-      return await fn()
-    } catch (err) {
-      if (n > attempts) throw err
-      console.error(`\nError occured: ${err.message}`)
-      console.error(`Waiting ${(delay / 1e3).toFixed()}s to retry ...`)
-      const ms = delay
-      delay = backoff(delay)
-      return sleep(ms).then(() => makeAttempt(n + 1))
-    }
-  }
+import report from './report'
+
+const sleep = tm => new Promise(resolve => setTimeout(resolve, tm))
+
+export default function retry (fn, opts = {}) {
+  return tryOne({ ...opts, fn, attempt: 1 })
 }
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+function tryOne (opts) {
+  const {
+    fn,
+    attempt,
+    maxAttempts = 5,
+    delay = ms('1 minute'),
+    backoff = n => n * 1.5
+  } = opts
+
+  return Promise.resolve(fn()).catch(err => {
+    if (attempt > maxAttempts) throw err
+    report.emit('retry', { attempt, delay, err })
+    return sleep(delay).then(() =>
+      tryOne({
+        ...opts,
+        attempt: attempt + 1,
+        delay: backoff(delay)
+      })
+    )
+  })
+}
