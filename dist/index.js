@@ -319,7 +319,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "1.1.1";
+var version = "1.1.2";
 
 function retry (fn, opts = {}) {
   return tryOne({ ...opts, fn, attempt: 1 })
