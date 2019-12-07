@@ -7,8 +7,8 @@ import { exec, pipeline } from './util'
 
 const ONE_SECOND = 2 * 2 * 44100
 
-export async function captureTrackPCM (uri, dest, onProgress) {
-  onProgress({})
+export async function captureTrackPCM (uri, dest, { onProgress } = {}) {
+  onProgress && onProgress({})
 
   const md = await getData(`/track/${uri}`)
   const speedo = new Speedo(60)
@@ -21,13 +21,14 @@ export async function captureTrackPCM (uri, dest, onProgress) {
     onProgress ({ bytes, done }) {
       const curr = bytes / ONE_SECOND
       speedo.update(curr)
-      onProgress({
-        done,
-        curr,
-        total: done ? curr : speedo.total,
-        eta: done ? undefined : speedo.eta(),
-        speed: done ? curr / speedo.taken() : undefined
-      })
+      onProgress &&
+        onProgress({
+          done,
+          curr,
+          total: done ? curr : speedo.total,
+          eta: done ? undefined : speedo.eta(),
+          speed: done ? curr / speedo.taken() : undefined
+        })
     }
   })
 

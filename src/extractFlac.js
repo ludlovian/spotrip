@@ -32,12 +32,12 @@ export default async function extractFlac (path) {
       file: basename(flacFile)
     })
 
-    report.emit('extract.flac.track', track)
+    report('extract.flac.track', track)
   }
 
   await writeFile(join(path, 'metadata.json'), JSON.stringify(md, null, 2))
 
-  report.emit('extract.flac.album')
+  report('extract.flac.album')
 }
 
 async function getTracks (path) {

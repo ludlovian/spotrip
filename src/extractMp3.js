@@ -31,11 +31,11 @@ export default async function extractMp3 (path) {
       file: basename(flacFile)
     })
 
-    report.emit('extract.mp3.track.done', track)
+    report('extract.mp3.track.done', track)
   }
   await writeFile(join(path, 'metadata.json'), JSON.stringify(md, null, 2))
 
-  report.emit('extract.mp3.album.done')
+  report('extract.mp3.album.done')
 }
 
 async function getTracks (path) {
@@ -64,10 +64,10 @@ function getTag (prefix, rows) {
 async function convertToFlac (mp3File, flacFile) {
   const pcmFile = mp3File.replace(/\.mp3$/, '') + '.pcm'
 
-  report.emit('extract.mp3.track.start', basename(mp3File))
+  report('extract.mp3.track.start', basename(mp3File))
   await exec('lame', ['--silent', '--decode', '-t', mp3File, pcmFile])
 
-  report.emit('extract.mp3.track.convert', basename(mp3File))
+  report('extract.mp3.track.convert', basename(mp3File))
   await exec('flac', [
     '--silent',
     '--force',

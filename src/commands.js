@@ -1,5 +1,7 @@
 import { basename, join, resolve } from 'path'
 
+import retry from 'retry'
+
 import {
   captureTrackPCM,
   convertPCMtoFLAC,
@@ -9,7 +11,6 @@ import {
 import { getSpotwebPid, startSpotweb, stopSpotweb } from './spotweb'
 import { copyToStore, copyFromStore, downloadMetadata } from './album'
 import { normalizeUri, readJson, exists, writeFile } from './util'
-import retry from './retry'
 import report from './report'
 import options from './options'
 
@@ -17,27 +18,31 @@ export async function recordTrack (uri, flacFile) {
   uri = normalizeUri(uri, 'track')
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm'
 
-  await retry(() =>
-    captureTrackPCM(uri, pcmFile, data => {
-      if (!data.curr) {
-        report.emit('track.capturing.start', basename(flacFile))
-      } else if (data.done) {
-        report.emit('track.capturing.done', data)
-      } else {
-        report.emit('track.capturing.update', data)
-      }
-    })
-  )
+  await retry(() => captureTrackPCM(uri, pcmFile, { onProgress }), {
+    onRetry: data => report('retry', data),
+    retries: 5,
+    delay: 60 * 1000
+  })
 
-  report.emit('track.converting.start')
+  report('track.converting.start')
   await convertPCMtoFLAC(pcmFile, flacFile)
-  report.emit('track.converting.done')
+  report('track.converting.done')
+
+  function onProgress (data) {
+    if (!data.curr) {
+      report('track.capturing.start', basename(flacFile))
+    } else if (data.done) {
+      report('track.capturing.done', data)
+    } else {
+      report('track.capturing.update', data)
+    }
+  }
 }
 
 export async function recordAlbum (path) {
   const md = await readJson(join(path, 'metadata.json'))
 
-  report.emit('album.recording.start', md)
+  report('album.recording.start', md)
 
   for (const track of md.tracks) {
     const flacFile = join(path, track.file)
@@ -47,7 +52,7 @@ export async function recordAlbum (path) {
     }
   }
 
-  report.emit('album.recording.done')
+  report('album.recording.done')
 }
 
 export async function tagAlbum (path) {
@@ -56,23 +61,23 @@ export async function tagAlbum (path) {
   const hasCover = await exists(coverFile)
 
   for (const track of md.tracks) {
-    report.emit('track.tagging', track.file)
+    report('track.tagging', track.file)
     const flacFile = join(path, track.file)
     await tagTrack(flacFile, md, track, hasCover && coverFile)
   }
 
-  report.emit('album.replayGain.start')
+  report('album.replayGain.start')
   await addReplayGain(md.tracks.map(track => join(path, track.file)))
-  report.emit('album.replayGain.done')
+  report('album.replayGain.done')
 }
 
 export async function publishAlbum (path) {
   const md = await readJson(join(path, 'metadata.json'))
   const storePath = join(options.store, md.path)
 
-  report.emit('album.publishing.start', storePath)
+  report('album.publishing.start', storePath)
   await copyToStore(path, storePath)
-  report.emit('album.publishing.done')
+  report('album.publishing.done')
 }
 
 export async function checkoutAlbum (path) {
@@ -84,9 +89,9 @@ export async function checkoutAlbum (path) {
   const workDir = md.path.replace('/', '_')
   const workPath = join(options.work, 'work', workDir)
 
-  report.emit('album.checkout.start', workDir)
+  report('album.checkout.start', workDir)
   await copyFromStore(path, workPath)
-  report.emit('album.checkout.done', workDir)
+  report('album.checkout.done', workDir)
 
   return workPath
 }
@@ -100,7 +105,7 @@ export async function ripAlbum (path) {
 
 export async function queueAlbum (uri) {
   uri = normalizeUri(uri, 'album')
-  report.emit('album.queue.start', uri)
+  report('album.queue.start', uri)
 
   const path = await downloadMetadata(uri)
   const workPath = await checkoutAlbum(path)
@@ -109,19 +114,19 @@ export async function queueAlbum (uri) {
 
   await writeFile(queueFile, `spotrip rip ${workPath}\n`)
 
-  report.emit('album.queue.done', jobName)
+  report('album.queue.done', jobName)
 }
 
 export async function daemonStatus () {
-  report.emit('daemon.status', await getSpotwebPid())
+  report('daemon.status', await getSpotwebPid())
 }
 
 export async function daemonStart () {
   await startSpotweb()
-  report.emit('daemon.started')
+  report('daemon.started')
 }
 
 export async function daemonStop () {
   await stopSpotweb()
-  report.emit('daemon.stopped')
+  report('daemon.stopped')
 }

@@ -321,6 +321,30 @@ var lib$1 = (str, isOne) => new Sade(str, isOne);
 
 var version = "1.1.1";
 
+function retry (fn, opts = {}) {
+  return tryOne({ ...opts, fn, attempt: 1 })
+}
+function tryOne (options) {
+  const {
+    fn,
+    attempt,
+    retries = 10,
+    delay = 1000,
+    backoff = retry.exponential(1.5),
+    onRetry
+  } = options;
+  return new Promise(resolve => resolve(fn())).catch(error => {
+    if (attempt > retries) throw error
+    if (onRetry) onRetry({ error, attempt, delay });
+    return sleep(delay).then(() =>
+      tryOne({ ...options, attempt: attempt + 1, delay: backoff(delay) })
+    )
+  })
+}
+retry.exponential = x => n => Math.round(n * x);
+const sleep = delay => new Promise(resolve => setTimeout(resolve, delay));
+var dist = retry;
+
 function progress (opts = {}) {
   const { onProgress, progressInterval, ...rest } = opts;
   let interval;
@@ -356,7 +380,7 @@ function progress (opts = {}) {
     if (!error) ts.emit('progress', { bytes, done, ...rest });
   }
 }
-var dist = progress;
+var dist$1 = progress;
 
 class Speedo {
   constructor ({ length = 10 } = {}) {
@@ -495,24 +519,25 @@ async function startSpotweb () {
 }
 
 const ONE_SECOND = 2 * 2 * 44100;
-async function captureTrackPCM (uri, dest, onProgress) {
-  onProgress({});
+async function captureTrackPCM (uri, dest, { onProgress } = {}) {
+  onProgress && onProgress({});
   const md = await getData(`/track/${uri}`);
   const speedo = new Speedo(60);
   speedo.total = md.duration / 1e3;
   const dataStream = await getStream(`/play/${uri}`);
-  const progress = dist({
+  const progress = dist$1({
     progressInterval: 1000,
     onProgress ({ bytes, done }) {
       const curr = bytes / ONE_SECOND;
       speedo.update(curr);
-      onProgress({
-        done,
-        curr,
-        total: done ? curr : speedo.total,
-        eta: done ? undefined : speedo.eta(),
-        speed: done ? curr / speedo.taken() : undefined
-      });
+      onProgress &&
+        onProgress({
+          done,
+          curr,
+          total: done ? curr : speedo.total,
+          eta: done ? undefined : speedo.eta(),
+          speed: done ? curr / speedo.taken() : undefined
+        });
     }
   });
   const fileStream = fs.createWriteStream(dest);
@@ -696,6 +721,94 @@ function uniq (list) {
   return [...new Set(list)]
 }
 
+const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
+const $ = {
+	enabled: !NODE_DISABLE_COLORS && TERM !== 'dumb' && FORCE_COLOR !== '0',
+	reset: init(0, 0),
+	bold: init(1, 22),
+	dim: init(2, 22),
+	italic: init(3, 23),
+	underline: init(4, 24),
+	inverse: init(7, 27),
+	hidden: init(8, 28),
+	strikethrough: init(9, 29),
+	black: init(30, 39),
+	red: init(31, 39),
+	green: init(32, 39),
+	yellow: init(33, 39),
+	blue: init(34, 39),
+	magenta: init(35, 39),
+	cyan: init(36, 39),
+	white: init(37, 39),
+	gray: init(90, 39),
+	grey: init(90, 39),
+	bgBlack: init(40, 49),
+	bgRed: init(41, 49),
+	bgGreen: init(42, 49),
+	bgYellow: init(43, 49),
+	bgBlue: init(44, 49),
+	bgMagenta: init(45, 49),
+	bgCyan: init(46, 49),
+	bgWhite: init(47, 49)
+};
+function run(arr, str) {
+	let i=0, tmp, beg='', end='';
+	for (; i < arr.length; i++) {
+		tmp = arr[i];
+		beg += tmp.open;
+		end += tmp.close;
+		if (str.includes(tmp.close)) {
+			str = str.replace(tmp.rgx, tmp.close + tmp.open);
+		}
+	}
+	return beg + str + end;
+}
+function chain(has, keys) {
+	let ctx = { has, keys };
+	ctx.reset = $.reset.bind(ctx);
+	ctx.bold = $.bold.bind(ctx);
+	ctx.dim = $.dim.bind(ctx);
+	ctx.italic = $.italic.bind(ctx);
+	ctx.underline = $.underline.bind(ctx);
+	ctx.inverse = $.inverse.bind(ctx);
+	ctx.hidden = $.hidden.bind(ctx);
+	ctx.strikethrough = $.strikethrough.bind(ctx);
+	ctx.black = $.black.bind(ctx);
+	ctx.red = $.red.bind(ctx);
+	ctx.green = $.green.bind(ctx);
+	ctx.yellow = $.yellow.bind(ctx);
+	ctx.blue = $.blue.bind(ctx);
+	ctx.magenta = $.magenta.bind(ctx);
+	ctx.cyan = $.cyan.bind(ctx);
+	ctx.white = $.white.bind(ctx);
+	ctx.gray = $.gray.bind(ctx);
+	ctx.grey = $.grey.bind(ctx);
+	ctx.bgBlack = $.bgBlack.bind(ctx);
+	ctx.bgRed = $.bgRed.bind(ctx);
+	ctx.bgGreen = $.bgGreen.bind(ctx);
+	ctx.bgYellow = $.bgYellow.bind(ctx);
+	ctx.bgBlue = $.bgBlue.bind(ctx);
+	ctx.bgMagenta = $.bgMagenta.bind(ctx);
+	ctx.bgCyan = $.bgCyan.bind(ctx);
+	ctx.bgWhite = $.bgWhite.bind(ctx);
+	return ctx;
+}
+function init(open, close) {
+	let blk = {
+		open: `\x1b[${open}m`,
+		close: `\x1b[${close}m`,
+		rgx: new RegExp(`\\x1b\\[${close}m`, 'g')
+	};
+	return function (txt) {
+		if (this !== void 0 && this.has !== void 0) {
+			this.has.includes(open) || (this.has.push(open),this.keys.push(blk));
+			return txt === void 0 ? this : $.enabled ? run(this.keys, txt+'') : txt+'';
+		}
+		return txt === void 0 ? chain([open], [blk]) : $.enabled ? run([blk], txt+'') : txt+'';
+	};
+}
+var kleur = $;
+
 var s = 1000;
 var m = s * 60;
 var h = m * 60;
@@ -808,94 +921,6 @@ function plural(ms, msAbs, n, name) {
   return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
 }
 
-const { FORCE_COLOR, NODE_DISABLE_COLORS, TERM } = process.env;
-const $ = {
-	enabled: !NODE_DISABLE_COLORS && TERM !== 'dumb' && FORCE_COLOR !== '0',
-	reset: init(0, 0),
-	bold: init(1, 22),
-	dim: init(2, 22),
-	italic: init(3, 23),
-	underline: init(4, 24),
-	inverse: init(7, 27),
-	hidden: init(8, 28),
-	strikethrough: init(9, 29),
-	black: init(30, 39),
-	red: init(31, 39),
-	green: init(32, 39),
-	yellow: init(33, 39),
-	blue: init(34, 39),
-	magenta: init(35, 39),
-	cyan: init(36, 39),
-	white: init(37, 39),
-	gray: init(90, 39),
-	grey: init(90, 39),
-	bgBlack: init(40, 49),
-	bgRed: init(41, 49),
-	bgGreen: init(42, 49),
-	bgYellow: init(43, 49),
-	bgBlue: init(44, 49),
-	bgMagenta: init(45, 49),
-	bgCyan: init(46, 49),
-	bgWhite: init(47, 49)
-};
-function run(arr, str) {
-	let i=0, tmp, beg='', end='';
-	for (; i < arr.length; i++) {
-		tmp = arr[i];
-		beg += tmp.open;
-		end += tmp.close;
-		if (str.includes(tmp.close)) {
-			str = str.replace(tmp.rgx, tmp.close + tmp.open);
-		}
-	}
-	return beg + str + end;
-}
-function chain(has, keys) {
-	let ctx = { has, keys };
-	ctx.reset = $.reset.bind(ctx);
-	ctx.bold = $.bold.bind(ctx);
-	ctx.dim = $.dim.bind(ctx);
-	ctx.italic = $.italic.bind(ctx);
-	ctx.underline = $.underline.bind(ctx);
-	ctx.inverse = $.inverse.bind(ctx);
-	ctx.hidden = $.hidden.bind(ctx);
-	ctx.strikethrough = $.strikethrough.bind(ctx);
-	ctx.black = $.black.bind(ctx);
-	ctx.red = $.red.bind(ctx);
-	ctx.green = $.green.bind(ctx);
-	ctx.yellow = $.yellow.bind(ctx);
-	ctx.blue = $.blue.bind(ctx);
-	ctx.magenta = $.magenta.bind(ctx);
-	ctx.cyan = $.cyan.bind(ctx);
-	ctx.white = $.white.bind(ctx);
-	ctx.gray = $.gray.bind(ctx);
-	ctx.grey = $.grey.bind(ctx);
-	ctx.bgBlack = $.bgBlack.bind(ctx);
-	ctx.bgRed = $.bgRed.bind(ctx);
-	ctx.bgGreen = $.bgGreen.bind(ctx);
-	ctx.bgYellow = $.bgYellow.bind(ctx);
-	ctx.bgBlue = $.bgBlue.bind(ctx);
-	ctx.bgMagenta = $.bgMagenta.bind(ctx);
-	ctx.bgCyan = $.bgCyan.bind(ctx);
-	ctx.bgWhite = $.bgWhite.bind(ctx);
-	return ctx;
-}
-function init(open, close) {
-	let blk = {
-		open: `\x1b[${open}m`,
-		close: `\x1b[${close}m`,
-		rgx: new RegExp(`\\x1b\\[${close}m`, 'g')
-	};
-	return function (txt) {
-		if (this !== void 0 && this.has !== void 0) {
-			this.has.includes(open) || (this.has.push(open),this.keys.push(blk));
-			return txt === void 0 ? this : $.enabled ? run(this.keys, txt+'') : txt+'';
-		}
-		return txt === void 0 ? chain([open], [blk]) : $.enabled ? run([blk], txt+'') : txt+'';
-	};
-}
-var kleur = $;
-
 const CSI = '\u001B[';
 const CR = '\r';
 const EOL = `${CSI}0K`;
@@ -911,8 +936,11 @@ log.status = string => {
 log.prefix = '';
 
 const { green, cyan } = kleur;
-const report = new EventEmitter();
-report
+const reporter = new EventEmitter();
+function report (msg, payload) {
+  reporter.emit(msg, payload);
+}
+reporter
   .on('track.capturing.start', name => {
     log.prefix = `${green(name)} `;
     log.status('... ');
@@ -962,79 +990,57 @@ report
   .on('extract.flac.track', track => log(green(track)))
   .on('extract.flac.album', () => log('\nExtracted'));
 
-const sleep = tm => new Promise(resolve => setTimeout(resolve, tm));
-function retry (fn, opts = {}) {
-  return tryOne({ ...opts, fn, attempt: 1 })
-}
-function tryOne (opts) {
-  const {
-    fn,
-    attempt,
-    maxAttempts = 5,
-    delay = ms('1 minute'),
-    backoff = n => n * 1.5
-  } = opts;
-  return Promise.resolve(fn()).catch(err => {
-    if (attempt > maxAttempts) throw err
-    report.emit('retry', { attempt, delay, err });
-    return sleep(delay).then(() =>
-      tryOne({
-        ...opts,
-        attempt: attempt + 1,
-        delay: backoff(delay)
-      })
-    )
-  })
-}
-
 async function recordTrack (uri, flacFile) {
   uri = normalizeUri(uri, 'track');
   const pcmFile = flacFile.replace(/\.flac$/, '') + '.pcm';
-  await retry(() =>
-    captureTrackPCM(uri, pcmFile, data => {
-      if (!data.curr) {
-        report.emit('track.capturing.start', path.basename(flacFile));
-      } else if (data.done) {
-        report.emit('track.capturing.done', data);
-      } else {
-        report.emit('track.capturing.update', data);
-      }
-    })
-  );
-  report.emit('track.converting.start');
+  await dist(() => captureTrackPCM(uri, pcmFile, { onProgress }), {
+    onRetry: data => report('retry', data),
+    retries: 5,
+    delay: 60 * 1000
+  });
+  report('track.converting.start');
   await convertPCMtoFLAC(pcmFile, flacFile);
-  report.emit('track.converting.done');
+  report('track.converting.done');
+  function onProgress (data) {
+    if (!data.curr) {
+      report('track.capturing.start', path.basename(flacFile));
+    } else if (data.done) {
+      report('track.capturing.done', data);
+    } else {
+      report('track.capturing.update', data);
+    }
+  }
 }
 async function recordAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
-  report.emit('album.recording.start', md);
+  report('album.recording.start', md);
   for (const track of md.tracks) {
     const flacFile = path.join(path$1, track.file);
     if (!(await exists(flacFile))) {
       await recordTrack(track.trackUri, flacFile);
     }
   }
-  report.emit('album.recording.done');
+  report('album.recording.done');
 }
 async function tagAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const coverFile = path.join(path$1, 'cover.jpg');
   const hasCover = await exists(coverFile);
   for (const track of md.tracks) {
-    report.emit('track.tagging', track.file);
+    report('track.tagging', track.file);
     const flacFile = path.join(path$1, track.file);
     await tagTrack(flacFile, md, track, hasCover && coverFile);
   }
-  report.emit('album.replayGain.start');
+  report('album.replayGain.start');
   await addReplayGain(md.tracks.map(track => path.join(path$1, track.file)));
-  report.emit('album.replayGain.done');
+  report('album.replayGain.done');
 }
 async function publishAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const storePath = path.join(options.store, md.path);
-  report.emit('album.publishing.start', storePath);
+  report('album.publishing.start', storePath);
   await copyToStore(path$1, storePath);
-  report.emit('album.publishing.done');
+  report('album.publishing.done');
 }
 async function checkoutAlbum (path$1) {
   path$1 = path.resolve(path$1);
@@ -1042,9 +1048,9 @@ async function checkoutAlbum (path$1) {
   const md = await readJson(path.join(path$1, 'metadata.json'));
   const workDir = md.path.replace('/', '_');
   const workPath = path.join(options.work, 'work', workDir);
-  report.emit('album.checkout.start', workDir);
+  report('album.checkout.start', workDir);
   await copyFromStore(path$1, workPath);
-  report.emit('album.checkout.done', workDir);
+  report('album.checkout.done', workDir);
   return workPath
 }
 async function ripAlbum (path) {
@@ -1055,24 +1061,24 @@ async function ripAlbum (path) {
 }
 async function queueAlbum (uri) {
   uri = normalizeUri(uri, 'album');
-  report.emit('album.queue.start', uri);
+  report('album.queue.start', uri);
   const path$1 = await downloadMetadata(uri);
   const workPath = await checkoutAlbum(path$1);
   const jobName = path.basename(workPath);
   const queueFile = path.join(options.work, 'queue', jobName);
   await writeFile(queueFile, `spotrip rip ${workPath}\n`);
-  report.emit('album.queue.done', jobName);
+  report('album.queue.done', jobName);
 }
 async function daemonStatus () {
-  report.emit('daemon.status', await getSpotwebPid());
+  report('daemon.status', await getSpotwebPid());
 }
 async function daemonStart () {
   await startSpotweb();
-  report.emit('daemon.started');
+  report('daemon.started');
 }
 async function daemonStop () {
   await stopSpotweb();
-  report.emit('daemon.stopped');
+  report('daemon.stopped');
 }
 
 async function extractMp3 (path$1) {
@@ -1099,10 +1105,10 @@ async function extractMp3 (path$1) {
       trackTotal: tracks.length,
       file: path.basename(flacFile)
     });
-    report.emit('extract.mp3.track.done', track);
+    report('extract.mp3.track.done', track);
   }
   await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
-  report.emit('extract.mp3.album.done');
+  report('extract.mp3.album.done');
 }
 async function getTracks (path) {
   const files = await readdir(path);
@@ -1126,9 +1132,9 @@ function getTag (prefix, rows) {
 }
 async function convertToFlac (mp3File, flacFile) {
   const pcmFile = mp3File.replace(/\.mp3$/, '') + '.pcm';
-  report.emit('extract.mp3.track.start', path.basename(mp3File));
+  report('extract.mp3.track.start', path.basename(mp3File));
   await exec('lame', ['--silent', '--decode', '-t', mp3File, pcmFile]);
-  report.emit('extract.mp3.track.convert', path.basename(mp3File));
+  report('extract.mp3.track.convert', path.basename(mp3File));
   await exec('flac', [
     '--silent',
     '--force',
@@ -1167,10 +1173,10 @@ async function extractFlac (path$1) {
       trackTotal: tracks.length,
       file: path.basename(flacFile)
     });
-    report.emit('extract.flac.track', track);
+    report('extract.flac.track', track);
   }
   await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
-  report.emit('extract.flac.album');
+  report('extract.flac.album');
 }
 async function getTracks$1 (path) {
   const files = await readdir(path);

@@ -8,10 +8,12 @@ import { time } from './util'
 
 const { green, cyan } = kleur
 
-const report = new EventEmitter()
-export default report
+const reporter = new EventEmitter()
+export default function report (msg, payload) {
+  reporter.emit(msg, payload)
+}
 
-report
+reporter
   .on('track.capturing.start', name => {
     log.prefix = `${green(name)} `
     log.status('... ')
