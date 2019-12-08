@@ -4,7 +4,6 @@ import ms from 'ms'
 import EventEmitter from 'events'
 
 import log from './log'
-import { time } from './util'
 
 const { green, cyan } = kleur
 
@@ -19,10 +18,16 @@ reporter
     log.status('... ')
   })
   .on('track.capturing.update', ({ curr, total, eta }) =>
-    log.status(` - ${time(curr)}  of ${time(total)}  eta ${time(eta)}`)
+    log.status(
+      [
+        `- ${fmtDuration(curr)}`,
+        `of ${fmtDuration(total)}`,
+        `eta ${fmtDuration(eta)}`
+      ].join('  ')
+    )
   )
   .on('track.capturing.done', ({ name, total, speed }) => {
-    log.prefix += ` - ${time(total)}  at ${speed.toFixed(1)}x`
+    log.prefix += green(`- ${fmtDuration(total)}  at ${speed.toFixed(1)}x`)
     log.status(' ')
   })
   .on('track.converting.start', () => log.status(' ... converting'))
@@ -62,3 +67,12 @@ reporter
   .on('extract.mp3.album.done', () => log('\nExtracted'))
   .on('extract.flac.track', track => log(green(track)))
   .on('extract.flac.album', () => log('\nExtracted'))
+
+function fmtDuration (ms) {
+  const secs = Math.round(ms / 1e3)
+  const mn = Math.floor(secs / 60)
+    .toString()
+    .padStart(2, '0')
+  const sc = (secs % 60).toString().padStart(2, '0')
+  return `${mn}:${sc}`
+}

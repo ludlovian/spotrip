@@ -24,7 +24,8 @@
     "progress-stream": "github:ludlovian/progress-stream",
     "retry": "github:ludlovian/retry",
     "sade": "^1.6.1",
-    "slugify": "^1.3.6"
+    "slugify": "^1.3.6",
+    "speedo": "github:ludlovian/speedo"
   },
   "devDependencies": {
     "esm": "^3.2.25",

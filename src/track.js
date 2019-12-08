@@ -1,7 +1,7 @@
 import { createWriteStream } from 'fs'
 import progressStream from 'progress-stream'
 
-import Speedo from './speedo'
+import Speedo from 'speedo'
 import { getStream, getData } from './spotweb'
 import { exec, pipeline } from './util'
 
@@ -21,13 +21,14 @@ export async function captureTrackPCM (uri, dest, { onProgress } = {}) {
     onProgress ({ bytes, done }) {
       const curr = bytes / ONE_SECOND
       speedo.update(curr)
+      if (done) speedo.total = curr
       onProgress &&
         onProgress({
           done,
           curr,
-          total: done ? curr : speedo.total,
-          eta: done ? undefined : speedo.eta(),
-          speed: done ? curr / speedo.taken() : undefined
+          total: speedo.total,
+          eta: speedo.eta(),
+          speed: speedo.rate()
         })
     }
   })

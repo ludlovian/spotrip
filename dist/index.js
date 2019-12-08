@@ -383,38 +383,46 @@ function progress (opts = {}) {
 var dist$1 = progress;
 
 class Speedo {
-  constructor ({ length = 10 } = {}) {
-    this.length = length;
+  constructor ({ window = 10 } = {}) {
+    this.windowSize = window;
     this.start = Date.now();
     this.readings = [[this.start, 0]];
   }
-  update (n) {
-    this.readings.push([Date.now(), n]);
-    if (this.readings.length > this.length) {
-      this.readings.splice(0, this.readings.length - this.length);
+  update (data) {
+    if (typeof data === 'number') data = { current: data };
+    const { current, total } = data;
+    if (total) this.total = total;
+    this.readings.push([Date.now(), current]);
+    if (this.readings.length > this.windowSize) {
+      this.readings.splice(0, this.readings.length - this.windowSize);
     }
-    this.current = n;
+    this.current = current;
+  }
+  get done () {
+    return this.total && this.current >= this.total
   }
   rate () {
-    if (this.readings.length < 2) return null
+    if (this.readings.length < 2) return 0
+    if (this.done) return this.current * 1e3 / this.taken
     const last = this.readings[this.readings.length - 1];
     const first = this.readings[0];
     return ((last[1] - first[1]) * 1e3) / (last[0] - first[0])
   }
   percent () {
     if (!this.total) return null
-    return Math.round((100 * this.current) / this.total)
+    return this.done ? 100 : Math.round((100 * this.current) / this.total)
   }
   eta () {
-    if (!this.total) return null
+    if (!this.total || this.done) return 0
     const rate = this.rate();
-    if (rate === null) return null
-    return (this.total - this.current) / rate
+    if (!rate) return 0
+    return (1e3 * (this.total - this.current)) / rate
   }
   taken () {
-    return (this.readings[this.readings.length - 1][0] - this.start) / 1e3
+    return this.readings[this.readings.length - 1][0] - this.start
   }
 }
+var dist$2 = Speedo;
 
 const pipeline = util.promisify(stream.pipeline);
 const exec = util.promisify(child_process.execFile);
@@ -452,14 +460,6 @@ async function exists (file) {
   } catch (e) {
     return false
   }
-}
-function time (n) {
-  n = Math.round(n);
-  const mn = Math.floor(n / 60)
-    .toString()
-    .padStart(2, '0');
-  const sc = (n % 60).toString().padStart(2, '0');
-  return `${mn}:${sc}`
 }
 
 class Options {
@@ -522,7 +522,7 @@ const ONE_SECOND = 2 * 2 * 44100;
 async function captureTrackPCM (uri, dest, { onProgress } = {}) {
   onProgress && onProgress({});
   const md = await getData(`/track/${uri}`);
-  const speedo = new Speedo(60);
+  const speedo = new dist$2(60);
   speedo.total = md.duration / 1e3;
   const dataStream = await getStream(`/play/${uri}`);
   const progress = dist$1({
@@ -530,13 +530,14 @@ async function captureTrackPCM (uri, dest, { onProgress } = {}) {
     onProgress ({ bytes, done }) {
       const curr = bytes / ONE_SECOND;
       speedo.update(curr);
+      if (done) speedo.total = curr;
       onProgress &&
         onProgress({
           done,
           curr,
-          total: done ? curr : speedo.total,
-          eta: done ? undefined : speedo.eta(),
-          speed: done ? curr / speedo.taken() : undefined
+          total: speedo.total,
+          eta: speedo.eta(),
+          speed: speedo.rate()
         });
     }
   });
@@ -946,10 +947,16 @@ reporter
     log.status('... ');
   })
   .on('track.capturing.update', ({ curr, total, eta }) =>
-    log.status(` - ${time(curr)}  of ${time(total)}  eta ${time(eta)}`)
+    log.status(
+      [
+        `- ${fmtDuration(curr)}`,
+        `of ${fmtDuration(total)}`,
+        `eta ${fmtDuration(eta)}`
+      ].join('  ')
+    )
   )
   .on('track.capturing.done', ({ name, total, speed }) => {
-    log.prefix += ` - ${time(total)}  at ${speed.toFixed(1)}x`;
+    log.prefix += green(`- ${fmtDuration(total)}  at ${speed.toFixed(1)}x`);
     log.status(' ');
   })
   .on('track.converting.start', () => log.status(' ... converting'))
@@ -989,6 +996,14 @@ reporter
   .on('extract.mp3.album.done', () => log('\nExtracted'))
   .on('extract.flac.track', track => log(green(track)))
   .on('extract.flac.album', () => log('\nExtracted'));
+function fmtDuration (ms) {
+  const secs = Math.round(ms / 1e3);
+  const mn = Math.floor(secs / 60)
+    .toString()
+    .padStart(2, '0');
+  const sc = (secs % 60).toString().padStart(2, '0');
+  return `${mn}:${sc}`
+}
 
 async function recordTrack (uri, flacFile) {
   uri = normalizeUri(uri, 'track');
