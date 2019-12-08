@@ -403,7 +403,7 @@ class Speedo {
   }
   rate () {
     if (this.readings.length < 2) return 0
-    if (this.done) return this.current * 1e3 / this.taken
+    if (this.done) return (this.current * 1e3) / this.taken()
     const last = this.readings[this.readings.length - 1];
     const first = this.readings[0];
     return ((last[1] - first[1]) * 1e3) / (last[0] - first[0])
@@ -523,7 +523,7 @@ async function captureTrackPCM (uri, dest, { onProgress } = {}) {
   onProgress && onProgress({});
   const md = await getData(`/track/${uri}`);
   const speedo = new dist$2(60);
-  speedo.total = md.duration / 1e3;
+  speedo.total = 1 + md.duration / 1e3;
   const dataStream = await getStream(`/play/${uri}`);
   const progress = dist$1({
     progressInterval: 1000,

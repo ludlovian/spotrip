@@ -12,7 +12,8 @@ export async function captureTrackPCM (uri, dest, { onProgress } = {}) {
 
   const md = await getData(`/track/${uri}`)
   const speedo = new Speedo(60)
-  speedo.total = md.duration / 1e3
+  // overestimate the total
+  speedo.total = 1 + md.duration / 1e3
 
   const dataStream = await getStream(`/play/${uri}`)
 
