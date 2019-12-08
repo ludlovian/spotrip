@@ -949,14 +949,16 @@ reporter
   .on('track.capturing.update', ({ curr, total, eta }) =>
     log.status(
       [
-        `- ${fmtDuration(curr)}`,
-        `of ${fmtDuration(total)}`,
+        `- ${fmtDuration(curr * 1e3)}`,
+        `of ${fmtDuration(total * 1e3)}`,
         `eta ${fmtDuration(eta)}`
       ].join('  ')
     )
   )
   .on('track.capturing.done', ({ name, total, speed }) => {
-    log.prefix += green(`- ${fmtDuration(total)}  at ${speed.toFixed(1)}x`);
+    log.prefix += green(
+      `- ${fmtDuration(total * 1e3)}  at ${speed.toFixed(1)}x`
+    );
     log.status(' ');
   })
   .on('track.converting.start', () => log.status(' ... converting'))
