@@ -58,9 +58,11 @@ reporter
   )
   .on('daemon.stopped', () => log('spotweb stopped'))
   .on('daemon.started', () => log('spotweb started'))
-  .on('retry', ({ delay, err }) => {
+  .on('retry', ({ delay, error }) => {
     console.error(
-      `\nError occured: ${err.message}\nWaiting ${ms(delay)} to retry...`
+      `\nError occured: ${error ? error.message : 'Unknown'}\nWaiting ${ms(
+        delay
+      )} to retry...`
     )
   })
   .on('extract.mp3.track.start', name => log.status(`${name} extracting`))
