@@ -17,16 +17,10 @@ reporter
     log.prefix = `${green(name)} `
     log.status('... ')
   })
-  .on('track.capturing.update', ({ curr, total, eta }) =>
-    log.status(
-      [
-        `- ${fmtDuration(curr * 1e3)}`,
-        `of ${fmtDuration(total * 1e3)}`,
-        `eta ${fmtDuration(eta)}`
-      ].join('  ')
-    )
+  .on('track.capturing.update', ({ percent, taken, eta }) =>
+    log.status(`- ${percent}%  in ${ms(taken)}  eta ${ms(eta)}`)
   )
-  .on('track.capturing.done', ({ name, total, speed }) => {
+  .on('track.capturing.done', ({ total, speed }) => {
     log.prefix += green(
       `- ${fmtDuration(total * 1e3)}  at ${speed.toFixed(1)}x`
     )

@@ -4,6 +4,7 @@ import slugify from 'slugify'
 
 import { exec, spawn, writeFile, readJson, exists } from './util'
 import { getData } from './spotweb'
+import { downloadAlbumArt } from './albumart'
 import options from './options'
 
 export async function copyToStore (path, storePath) {
@@ -55,6 +56,11 @@ export async function downloadMetadata (uri) {
   await writeFile(
     join(storePath, 'metadata.json'),
     JSON.stringify(metadata, null, 2)
+  )
+
+  await downloadAlbumArt(
+    metadata.tracks[0].trackUri,
+    join(storePath, 'cover.jpg')
   )
 
   return storePath

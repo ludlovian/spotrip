@@ -27,6 +27,8 @@ export async function captureTrackPCM (uri, dest, { onProgress } = {}) {
         onProgress({
           done,
           curr,
+          taken: speedo.taken(),
+          percent: speedo.percent(),
           total: speedo.total,
           eta: speedo.eta(),
           speed: speedo.rate()

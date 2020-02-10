@@ -156,6 +156,8 @@ var help = function (bin, tree, key, single) {
 			out += (NL + __ + __ + `${pfx} ${k} --help`);
 		});
 		out += NL;
+	} else if (!single && key !== DEF) {
+		out += section('Aliases', cmd.alibi, prefix);
 	}
 	out += section('Options', format(cmd.options), noop);
 	out += section('Examples', cmd.examples.map(prefix), noop);
@@ -211,12 +213,19 @@ class Sade {
 		usage = usage.join(' ');
 		this.curr = cmd;
 		if (opts.default) this.default=cmd;
-		this.tree[cmd] = { usage, options:[], alias:{}, default:{}, examples:[] };
+		this.tree[cmd] = { usage, alibi:[], options:[], alias:{}, default:{}, examples:[] };
+		if (opts.alias) this.alias(opts.alias);
 		if (desc) this.describe(desc);
 		return this;
 	}
 	describe(str) {
 		this.tree[this.curr || DEF$1].describe = Array.isArray(str) ? str : utils.sentences(str);
+		return this;
+	}
+	alias(...names) {
+		if (this.single) throw new Error('Cannot call `alias()` in "single" mode');
+		if (!this.curr) throw new Error('Cannot call `alias()` before defining a command');
+		this.tree[this.curr].alibi = this.tree[this.curr].alibi.concat(...names);
 		return this;
 	}
 	option(str, desc, val) {
@@ -262,11 +271,18 @@ class Sade {
 		if (isSingle) {
 			cmd = this.tree[DEF$1];
 		} else {
-			let i=1, len=argv._.length + 1;
+			let k, i=1, len=argv._.length + 1;
 			for (; i < len; i++) {
 				tmp = argv._.slice(0, i).join(' ');
 				if (this.tree[tmp] !== void 0) {
 					name=tmp; offset=(i + 2);
+				} else {
+					for (k in this.tree) {
+						if (this.tree[k].alibi.includes(tmp)) {
+							name=k; offset=(i + 2);
+							break;
+						}
+					}
 				}
 			}
 			cmd = this.tree[name];
@@ -372,7 +388,7 @@ function progress (opts = {}) {
   ts.on('pipe', src =>
     src.on('error', err => {
       error = error || err;
-      ts.emit(err);
+      ts.emit('error', err);
     })
   );
   return ts
@@ -392,10 +408,9 @@ class Speedo {
     if (typeof data === 'number') data = { current: data };
     const { current, total } = data;
     if (total) this.total = total;
-    this.readings.push([Date.now(), current]);
-    if (this.readings.length > this.windowSize) {
-      this.readings.splice(0, this.readings.length - this.windowSize);
-    }
+    this.readings = [...this.readings, [Date.now(), current]].slice(
+      -this.windowSize
+    );
     this.current = current;
   }
   get done () {
@@ -535,6 +550,8 @@ async function captureTrackPCM (uri, dest, { onProgress } = {}) {
         onProgress({
           done,
           curr,
+          taken: speedo.taken(),
+          percent: speedo.percent(),
           total: speedo.total,
           eta: speedo.eta(),
           speed: speedo.rate()
@@ -627,6 +644,41 @@ var slugify = createCommonjsModule(function (module, exports) {
 }));
 });
 
+const SONOS_PLAYER = '192.168.86.210';
+const SONOS_PORT = 1400;
+function getAlbumArtUri (
+  uri,
+  { player = SONOS_PLAYER, port = SONOS_PORT } = {}
+) {
+  uri = normalizeUri(uri, 'track');
+  return [
+    `http://${player}:${port}`,
+    '/getaa?s=1&u=',
+    encodeURIComponent(
+      [
+        'x-sonos-spotify:',
+        encodeURIComponent(uri),
+        '?sid=9&flags=8224&sn=1'
+      ].join('')
+    )
+  ].join('')
+}
+async function downloadAlbumArt (uri, destFile) {
+  const coverData = await new Promise((resolve, reject) =>
+    http
+      .get(getAlbumArtUri(uri), resolve)
+      .once('error', reject)
+      .end()
+  ).then(res => {
+    if (res.statusCode !== 200) {
+      throw new Error(`${res.statusCode} - ${res.statusMessage}`)
+    }
+    return res
+  });
+  const fileStream = fs.createWriteStream(destFile);
+  await pipeline(coverData, fileStream);
+}
+
 async function copyToStore (path, storePath) {
   await exec('mkdir', ['-p', storePath]);
   await exec('rsync', [
@@ -667,6 +719,10 @@ async function downloadMetadata (uri) {
   await writeFile(
     path.join(storePath, 'metadata.json'),
     JSON.stringify(metadata, null, 2)
+  );
+  await downloadAlbumArt(
+    metadata.tracks[0].trackUri,
+    path.join(storePath, 'cover.jpg')
   );
   return storePath
 }
@@ -946,16 +1002,10 @@ reporter
     log.prefix = `${green(name)} `;
     log.status('... ');
   })
-  .on('track.capturing.update', ({ curr, total, eta }) =>
-    log.status(
-      [
-        `- ${fmtDuration(curr * 1e3)}`,
-        `of ${fmtDuration(total * 1e3)}`,
-        `eta ${fmtDuration(eta)}`
-      ].join('  ')
-    )
+  .on('track.capturing.update', ({ percent, taken, eta }) =>
+    log.status(`- ${percent}%  in ${ms(taken)}  eta ${ms(eta)}`)
   )
-  .on('track.capturing.done', ({ name, total, speed }) => {
+  .on('track.capturing.done', ({ total, speed }) => {
     log.prefix += green(
       `- ${fmtDuration(total * 1e3)}  at ${speed.toFixed(1)}x`
     );
