@@ -1310,7 +1310,7 @@ prog
   .option(
     '--spotweb-command',
     'The command for spotweb',
-    '/home/alan/env/spotweb/bin/python3 /home/alan/dev/spotweb/spotweb.py'
+    '/home/alan/dev/spotweb/env/bin/python /home/alan/dev/spotweb/src/spotweb.py'
   );
 prog
   .command('queue <album-url>')
