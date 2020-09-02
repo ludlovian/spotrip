@@ -40,8 +40,9 @@ function getResponse (path) {
 }
 
 export function getSpotwebPid () {
-  return exec('pgrep', ['-fx', options['spotweb-command']]).then(
-    ({ stdout }) => stdout.trim(),
+  const port = options['spotweb-port']
+  return exec('fuser', [`${port}/tcp`]).then(
+    ({ stdout }) => stdout.trim().split('/')[0],
     err => {
       if (err.code) return ''
       throw err
@@ -50,7 +51,8 @@ export function getSpotwebPid () {
 }
 
 export async function stopSpotweb () {
-  await exec('pkill', ['-fx', options['spotweb-command']])
+  const pid = await getSpotwebPid()
+  if (pid) await exec('kill', [pid])
 }
 
 export async function startSpotweb () {

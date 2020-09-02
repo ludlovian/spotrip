@@ -33,7 +33,7 @@ prog
   .option(
     '--spotweb-command',
     'The command for spotweb',
-    '/home/alan/dev/spotweb/env/bin/python /home/alan/dev/spotweb/src/spotweb.py'
+    '/home/alan/dev/spotweb/start'
   )
 
 prog
