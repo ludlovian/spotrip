@@ -335,7 +335,7 @@ class Sade {
 }
 var lib$1 = (str, isOne) => new Sade(str, isOne);
 
-var version = "1.3.2";
+var version = "1.4.0";
 
 function retry (fn, opts = {}) {
   return tryOne({ ...opts, fn, attempt: 1 })
@@ -1051,7 +1051,10 @@ reporter
   .on('extract.mp3.track.done', track => log(green(track)))
   .on('extract.mp3.album.done', () => log('\nExtracted'))
   .on('extract.flac.track', track => log(green(track)))
-  .on('extract.flac.album', () => log('\nExtracted'));
+  .on('extract.flac.album', () => log('\nExtracted'))
+  .on('extract.wav.track.convert', name => log.status(`${name} converting`))
+  .on('extract.wav.track', track => log(green(track)))
+  .on('extract.wav.album', () => log('\nExtracted'));
 function fmtDuration (ms) {
   const secs = Math.round(ms / 1e3);
   const mn = Math.floor(secs / 60)
@@ -1229,8 +1232,8 @@ async function extractFlac (path$1) {
     const flacFile = path.join(path$1, track);
     const tags = await readTrackTags$1(flacFile);
     if (trackNumber === 1) {
-      md.albumArtist = tags.ALBUMARTIST;
-      md.album = tags.ALBUM;
+      md.albumArtist = tags.ALBUMARTIST || 'Unkown';
+      md.album = tags.ALBUM || 'Unknown';
       md.genre = tags.GENRE || 'Classical';
       md.year = tags.YEAR;
       md.path = slugify(md.albumArtist) + '/' + slugify(md.album);
@@ -1284,6 +1287,60 @@ async function readTrackTags$1 (file) {
     } else {
       tags[key] = [tags[key], value];
     }
+  }
+  return tags
+}
+
+async function extractWav (path$1) {
+  const tracks = await getTracks$2(path$1);
+  const md = {};
+  const tags = await readCddbFile(path.join(path$1, 'cddb'));
+  let trackNumber = 1;
+  for (const track of tracks) {
+    if (trackNumber === 1) {
+      md.albumArtist = 'Unknown';
+      md.album = tags.DTITLE || 'Unknown';
+      md.genre = tags.DGENRE || 'Classical';
+      md.year = tags.DYEAR;
+      md.path = slugify(md.albumArtist) + '/' + slugify(md.album);
+      md.tracks = [];
+    }
+    const wavFile = path.join(path$1, track);
+    const flacFile = wavFile.replace(/\.wav$/, '.flac');
+    await convertToFlac$1(wavFile, flacFile);
+    md.tracks.push({
+      title: tags[`TTITLE${trackNumber - 1}`] || 'Unknown',
+      trackNumber: trackNumber++,
+      trackTotal: tracks.length,
+      file: path.basename(flacFile)
+    });
+    report('extract.wav.track', track);
+  }
+  await writeFile(path.join(path$1, 'metadata.json'), JSON.stringify(md, null, 2));
+  report('extract.wav.album');
+}
+async function getTracks$2 (path) {
+  const files = await readdir(path);
+  return files.filter(name => name.endsWith('.wav')).sort()
+}
+async function convertToFlac$1 (wavFile, flacFile) {
+  report('extract.wav.track.convert', path.basename(wavFile));
+  await exec('flac', ['--silent', '--output-name=' + flacFile, wavFile]);
+}
+async function readCddbFile (cddbFile) {
+  if (!(await exists(cddbFile))) {
+    return {}
+  }
+  const file = await readFile(cddbFile, 'utf8');
+  const rgx = /(.+?)=(.*)/;
+  const lines = file
+    .split(/\n+/)
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'));
+  const tags = {};
+  for (const line of lines) {
+    const match = rgx.exec(line);
+    if (match) tags[match[1]] = match[2];
   }
   return tags
 }
@@ -1350,6 +1407,10 @@ prog
   .command('extract flac <dir>')
   .describe('converts FLAC dir')
   .action(extractFlac);
+prog
+  .command('extract wav <dir>')
+  .describe('converts WAV dir')
+  .action(extractWav);
 prog
   .command('daemon status')
   .describe('report on spotweb')
