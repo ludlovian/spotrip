@@ -65,6 +65,9 @@ reporter
   .on('extract.mp3.album.done', () => log('\nExtracted'))
   .on('extract.flac.track', track => log(green(track)))
   .on('extract.flac.album', () => log('\nExtracted'))
+  .on('extract.wav.track.convert', name => log.status(`${name} converting`))
+  .on('extract.wav.track', track => log(green(track)))
+  .on('extract.wav.album', () => log('\nExtracted'))
 
 function fmtDuration (ms) {
   const secs = Math.round(ms / 1e3)

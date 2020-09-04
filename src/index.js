@@ -16,6 +16,7 @@ import {
 } from './commands'
 import extractMp3 from './extractMp3'
 import extractFlac from './extractFlac'
+import extractWav from './extractWav'
 import { showAlbum, showTrack } from './show'
 import options from './options'
 
@@ -72,6 +73,10 @@ prog
   .command('extract flac <dir>')
   .describe('converts FLAC dir')
   .action(extractFlac)
+prog
+  .command('extract wav <dir>')
+  .describe('converts WAV dir')
+  .action(extractWav)
 prog
   .command('daemon status')
   .describe('report on spotweb')

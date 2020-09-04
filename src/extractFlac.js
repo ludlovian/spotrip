@@ -15,8 +15,8 @@ export default async function extractFlac (path) {
     const tags = await readTrackTags(flacFile)
 
     if (trackNumber === 1) {
-      md.albumArtist = tags.ALBUMARTIST
-      md.album = tags.ALBUM
+      md.albumArtist = tags.ALBUMARTIST || 'Unkown'
+      md.album = tags.ALBUM || 'Unknown'
       md.genre = tags.GENRE || 'Classical'
       md.year = tags.YEAR
       md.path = slugify(md.albumArtist) + '/' + slugify(md.album)
