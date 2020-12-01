@@ -71,15 +71,60 @@ export async function tagTrack (file, albumData, trackData, cover) {
 
   const tags = [...getTags(albumData), ...getTags(trackData)]
 
-  await exec('metaflac', [
-    '--remove-all-tags',
-    ...tags.map(tag => `--set-tag=${tag}`),
-    file
-  ])
+  const args = ['--no-utf8-convert']
+  for (const tag of tags) {
+    args.push(`--remove-tag=${tag.split('=')[0]}`)
+    args.push(`--set-tag=${tag}`)
+  }
+  args.push(file)
+
+  await exec('metaflac', args)
 }
 
 export async function addReplayGain (files) {
   await exec('metaflac', ['--add-replay-gain', ...files])
+  for (const file of files) {
+    await convertReplayGain(file)
+  }
+}
+
+const RG_PFX = 'REPLAYGAIN_'
+const RG_TAGS = 'TRACK_GAIN,TRACK_PEAK,ALBUM_GAIN,ALBUM_PEAK'.split(',')
+
+async function convertReplayGain (file) {
+  const rg = await extractReplayGainTags(file)
+  rg.TRACK_GAIN = rg.ALBUM_GAIN
+  rg.TRACK_PEAK = rg.ALBUM_PEAK
+  await writeReplayGainTags(file, rg)
+}
+
+async function extractReplayGainTags (file) {
+  const args = ['--no-utf8-convert']
+  for (const tag of RG_TAGS) {
+    args.push(`--show-tag=${RG_PFX}${tag}`)
+  }
+  args.push(file)
+
+  const { stdout } = await exec('metaflac', args)
+
+  const rg = {}
+  for (const line of stdout.split('\n').filter(Boolean)) {
+    const [key, val] = line.split('=')
+    rg[key.substring(RG_PFX.length)] = val
+  }
+
+  return rg
+}
+
+async function writeReplayGainTags (file, rgData) {
+  const args = ['--no-utf8-convert']
+
+  for (const [key, val] of Object.entries(rgData)) {
+    args.push(`--remove-tag=${RG_PFX}${key}`)
+    args.push(`--set-tag=${RG_PFX}${key}=${val}`)
+  }
+  args.push(file)
+  await exec('metaflac', args)
 }
 
 function getTags (obj) {
