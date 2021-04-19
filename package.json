@@ -19,7 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "httpie": "^1.1.2",
-    "kleur": "^3.0.3",
+    "kleur": "^4.1.4",
     "ms": "^2.1.2",
     "progress-stream": "github:ludlovian/progress-stream",
     "retry": "github:ludlovian/retry",
@@ -29,14 +29,10 @@
   },
   "devDependencies": {
     "esm": "^3.2.25",
-    "prettier-standard": "^16.1.0",
-    "rollup": "^1.31.0",
     "rollup-plugin-cleanup": "^3.1.1",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-terser": "^5.2.0",
-    "snazzy": "^8.0.0",
-    "standard": "^14.3.1"
+    "rollup-plugin-terser": "^7.0.2"
   }
 }
