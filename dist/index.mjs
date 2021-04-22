@@ -26,7 +26,7 @@ function streamFinished (stream) {
   })
 }
 function normalizeUri (uri, prefix) {
-  const coreUri = uri.replace(/.*[:/]/, '');
+  const coreUri = uri.replace(/.*[:/]/, '').replace(/\?.*$/, '');
   if (!URI_PATTERN.test(coreUri)) {
     throw new Error(`Bad URI: ${uri}`)
   }
