@@ -1,12 +1,12 @@
 import { createWriteStream } from 'fs'
 import http from 'http'
 
-import { normalizeUri, pipeline } from './util'
+import { normalizeUri, streamFinished } from './util'
 
 const SONOS_PLAYER = '192.168.86.210'
 const SONOS_PORT = 1400
 
-export function getAlbumArtUri (
+export function albumArtUri (
   uri,
   { player = SONOS_PLAYER, port = SONOS_PORT } = {}
 ) {
@@ -24,10 +24,10 @@ export function getAlbumArtUri (
   ].join('')
 }
 
-export async function downloadAlbumArt (uri, destFile) {
+export async function getAlbumArt (uri, destFile) {
   const coverData = await new Promise((resolve, reject) =>
     http
-      .get(getAlbumArtUri(uri), resolve)
+      .get(albumArtUri(uri), resolve)
       .once('error', reject)
       .end()
   ).then(res => {
@@ -38,5 +38,7 @@ export async function downloadAlbumArt (uri, destFile) {
   })
 
   const fileStream = createWriteStream(destFile)
-  await pipeline(coverData, fileStream)
+  coverData.once('error', err => fileStream.emit('error', err)).pipe(fileStream)
+
+  await streamFinished(fileStream)
 }

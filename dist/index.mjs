@@ -1,24 +1,14 @@
-'use strict';
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-var http = require('http');
-var child_process = require('child_process');
-var util = require('util');
-var promises = require('fs/promises');
-var fs = require('fs');
-var EventEmitter = require('events');
-var promises$1 = require('stream/promises');
-var stream = require('stream');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var http__default = /*#__PURE__*/_interopDefaultLegacy(http);
-var EventEmitter__default = /*#__PURE__*/_interopDefaultLegacy(EventEmitter);
-var stream__default = /*#__PURE__*/_interopDefaultLegacy(stream);
+import http from 'http';
+import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
+import { stat, unlink, readFile } from 'fs/promises';
+import { createWriteStream, promises } from 'fs';
+import EventEmitter from 'events';
+import { pipeline } from 'stream/promises';
+import stream from 'stream';
 
 const URI_PATTERN = /^[a-zA-Z0-9]{22}$/;
-const exec = util.promisify(child_process.execFile);
+const exec = promisify(execFile);
 function processEnded (proc) {
   return new Promise((resolve, reject) => {
     proc.once('error', reject);
@@ -44,7 +34,7 @@ function normalizeUri (uri, prefix) {
 }
 async function exists (path) {
   try {
-    await promises.stat(path);
+    await stat(path);
     return true
   } catch (err) {
     if (err.code === 'ENOENT') return false
@@ -67,7 +57,7 @@ async function daemonPid ({ port = DAEMON_PORT } = {}) {
 }
 async function daemonStart ({ cmd = DAEMON_COMMAND } = {}) {
   const [file, ...args] = cmd.split(' ');
-  child_process.spawn(file, args, { detached: true, stdio: 'ignore' }).unref();
+  spawn(file, args, { detached: true, stdio: 'ignore' }).unref();
 }
 async function daemonStop ({ port = DAEMON_PORT } = {}) {
   const pid = await daemonPid({ port });
@@ -96,7 +86,7 @@ async function getData (opts) {
 }
 function getResponse ({ path, port = DAEMON_PORT } = {}) {
   return new Promise((resolve, reject) => {
-    http__default['default']
+    http
       .get(`http://localhost:${port}${path}`, resolve)
       .once('error', reject)
       .end();
@@ -185,7 +175,7 @@ function albumArtUri (
 }
 async function getAlbumArt (uri, destFile) {
   const coverData = await new Promise((resolve, reject) =>
-    http__default['default']
+    http
       .get(albumArtUri(uri), resolve)
       .once('error', reject)
       .end()
@@ -195,7 +185,7 @@ async function getAlbumArt (uri, destFile) {
     }
     return res
   });
-  const fileStream = fs.createWriteStream(destFile);
+  const fileStream = createWriteStream(destFile);
   coverData.once('error', err => fileStream.emit('error', err)).pipe(fileStream);
   await streamFinished(fileStream);
 }
@@ -402,7 +392,7 @@ function truncateToWidth (string, width) {
   return parts.join('')
 }
 
-const reporter = new EventEmitter__default['default']();
+const reporter = new EventEmitter();
 const report = reporter.emit.bind(reporter);
 reporter
   .on('spotrip.queue.start', uri => log(`Queue ${log.green(uri)}`))
@@ -458,19 +448,19 @@ async function queueAlbum (
   };
   const mdFile = `${workDir}/work/${uri.replace(/.*:/, '')}.json`;
   const jpgFile = mdFile.replace(/json$/, 'jpg');
-  await fs.promises.writeFile(mdFile, JSON.stringify(metadata, null, 2));
+  await promises.writeFile(mdFile, JSON.stringify(metadata, null, 2));
   await Promise.all([
-    processEnded(child_process.spawn('vi', [mdFile], { stdio: 'inherit' })),
+    processEnded(spawn('vi', [mdFile], { stdio: 'inherit' })),
     getAlbumArt(metadata.tracks[0].trackUri, jpgFile)
   ]);
-  metadata = JSON.parse(await fs.promises.readFile(mdFile, 'utf8'));
+  metadata = JSON.parse(await promises.readFile(mdFile, 'utf8'));
   const jobName = metadata.path.replace(/\//g, '_');
   const destDir = `${workDir}/work/${jobName}`;
   await exec('mkdir', ['-p', destDir]);
-  await fs.promises.rename(mdFile, `${destDir}/metadata.json`);
-  await fs.promises.rename(jpgFile, `${destDir}/cover.jpg`);
+  await promises.rename(mdFile, `${destDir}/metadata.json`);
+  await promises.rename(jpgFile, `${destDir}/cover.jpg`);
   const jobFile = `${workDir}/queue/${jobName}`;
-  await fs.promises.writeFile(jobFile, `music spotrip ${destDir}`);
+  await promises.writeFile(jobFile, `music spotrip ${destDir}`);
   report$1('spotrip.queue.done', jobName);
 }
 function albumTags (album) {
@@ -572,7 +562,7 @@ function progress (opts = {}) {
   let bytes = 0;
   let done = false;
   let error;
-  const ts = new stream__default['default'].Transform({
+  const ts = new stream.Transform({
     transform (chunk, encoding, cb) {
       bytes += chunk.length;
       cb(null, chunk);
@@ -649,9 +639,9 @@ async function recordTrack ({ report: report$1 = report, uri, file }) {
   });
   report$1('spotrip.track.convert.start');
   await processEnded(
-    child_process.spawn('flac', [...FLAC_OPTIONS, `--output-name=${file}`, pcmFile])
+    spawn('flac', [...FLAC_OPTIONS, `--output-name=${file}`, pcmFile])
   );
-  await promises.unlink(pcmFile);
+  await unlink(pcmFile);
   report$1('spotrip.track.convert.done');
   function onProgress (data) {
     if (!data.current) {
@@ -686,8 +676,8 @@ async function captureTrackPCM ({ uri, file, onProgress }) {
       });
     }
   });
-  const fileStream = fs.createWriteStream(file);
-  await promises$1.pipeline(dataStream, progress, fileStream);
+  const fileStream = createWriteStream(file);
+  await pipeline(dataStream, progress, fileStream);
   const { streamed, error } = await getStatus();
   if (!streamed || error) {
     throw new Error(`Recording of ${uri} failed: ${error}`)
@@ -695,7 +685,7 @@ async function captureTrackPCM ({ uri, file, onProgress }) {
 }
 
 async function recordAlbum ({ report: report$1 = report, path }) {
-  const md = JSON.parse(await promises.readFile(`${path}/metadata.json`, 'utf8'));
+  const md = JSON.parse(await readFile(`${path}/metadata.json`, 'utf8'));
   report$1('spotrip.album.record.start', md);
   for (const track of md.tracks) {
     const file = `${path}/${track.file}`;
@@ -706,9 +696,4 @@ async function recordAlbum ({ report: report$1 = report, path }) {
   report$1('spotrip.album.record.done');
 }
 
-exports.daemonPid = daemonPid;
-exports.daemonStart = daemonStart;
-exports.daemonStop = daemonStop;
-exports.queueAlbum = queueAlbum;
-exports.recordAlbum = recordAlbum;
-exports.recordTrack = recordTrack;
+export { daemonPid, daemonStart, daemonStop, queueAlbum, recordAlbum, recordTrack };

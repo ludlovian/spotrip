@@ -6,7 +6,16 @@ import commonjs from 'rollup-plugin-commonjs'
 
 export default {
   input: 'src/index.js',
-  external: ['path', 'fs', 'child_process', 'http', 'util', 'stream', 'events'],
+  external: [
+    'http',
+    'fs',
+    'stream',
+    'child_process',
+    'util',
+    'events',
+    'fs/promises',
+    'stream/promises'
+  ],
   plugins: [
     resolve(),
     commonjs(),
@@ -18,8 +27,12 @@ export default {
     {
       file: 'dist/index.js',
       format: 'cjs',
-      sourcemap: false,
-      banner: '#!/usr/bin/env node'
+      sourcemap: false
+    },
+    {
+      file: 'dist/index.mjs',
+      format: 'esm',
+      sourcemap: false
     }
   ]
 }
