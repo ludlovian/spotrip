@@ -339,16 +339,10 @@ function log (string, { newline = true, limitWidth } = {}) {
   if (limitWidth && log.width) {
     string = truncateToWidth(string, log.width);
   }
-  if (log.dirty) {
-    string = CR + EOL + string;
-  }
-  if (newline) {
-    string = string + '\n';
-    log.dirty = false;
-  } else {
-    log.dirty = true;
-  }
-  log.write(string);
+  const start = log.dirty ? CR + EOL : '';
+  const end = newline ? '\n' : '';
+  log.dirty = newline ? false : !!string;
+  log.write(start + string + end);
 }
 Object.assign(log, {
   write: process.stdout.write.bind(process.stdout),
