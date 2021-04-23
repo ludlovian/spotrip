@@ -1,6 +1,6 @@
 {
   "name": "spotrip",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "description": "Spotify ripping",
   "module": "src/index.mjs",
   "source": "src/index.mjs",
