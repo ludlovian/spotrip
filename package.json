@@ -2,7 +2,9 @@
   "name": "spotrip",
   "version": "1.5.2",
   "description": "Spotify ripping",
-  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "main": "dist/index.mjs",
+  "source": "src/index.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier-standard {src,test}/*.js",
@@ -28,11 +30,9 @@
     "speedo": "github:ludlovian/speedo"
   },
   "devDependencies": {
-    "esm": "^3.2.25",
-    "rollup-plugin-cleanup": "^3.1.1",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-json": "^4.0.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-terser": "^7.0.2"
+    "@rollup/plugin-commonjs": "^18.0.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^11.2.1",
+    "esm": "^3.2.25"
   }
 }

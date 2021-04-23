@@ -1,11 +1,9 @@
-import { terser } from 'rollup-plugin-terser'
-import cleanup from 'rollup-plugin-cleanup'
-import json from 'rollup-plugin-json'
-import resolve from 'rollup-plugin-node-resolve'
-import commonjs from 'rollup-plugin-commonjs'
+import json from '@rollup/plugin-json'
+import resolve from '@rollup/plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
 
 export default {
-  input: 'src/index.js',
+  input: 'src/index.mjs',
   external: [
     'http',
     'fs',
@@ -19,16 +17,9 @@ export default {
   plugins: [
     resolve(),
     commonjs(),
-    json(),
-    cleanup(),
-    process.env.NODE_ENV === 'production' && terser()
+    json()
   ],
   output: [
-    {
-      file: 'dist/index.js',
-      format: 'cjs',
-      sourcemap: false
-    },
     {
       file: 'dist/index.mjs',
       format: 'esm',
