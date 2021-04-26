@@ -1,7 +1,7 @@
 import { createWriteStream } from 'fs'
 import http from 'http'
 
-import { normalizeUri, streamFinished } from './util'
+import { normalizeUri, streamFinished } from './util.mjs'
 
 const SONOS_PLAYER = '192.168.86.210'
 const SONOS_PORT = 1400

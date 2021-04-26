@@ -7,9 +7,9 @@ import Speedo from 'speedo'
 import progressStream from 'progress-stream'
 import retry from 'retry'
 
-import defaultReport from './report'
-import { normalizeUri, processEnded } from './util'
-import { getTrackMetadata, getPlayStream, getStatus } from './spotweb'
+import defaultReport from './report.mjs'
+import { normalizeUri, processEnded } from './util.mjs'
+import { getTrackMetadata, getPlayStream, getStatus } from './spotweb.mjs'
 
 const ONE_SECOND = 2 * 2 * 44100
 const FLAC_OPTIONS = [

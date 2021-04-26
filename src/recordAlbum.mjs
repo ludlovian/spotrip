@@ -1,8 +1,8 @@
 import { readFile } from 'fs/promises'
 
-import { exists } from './util'
-import { recordTrack } from './recordTrack'
-import defaultReport from './report'
+import { exists } from './util.mjs'
+import { recordTrack } from './recordTrack.mjs'
+import defaultReport from './report.mjs'
 
 export async function recordAlbum ({ report = defaultReport, path }) {
   const md = JSON.parse(await readFile(`${path}/metadata.json`, 'utf8'))

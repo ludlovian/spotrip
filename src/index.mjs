@@ -1,7 +1,7 @@
-import { daemonPid, daemonStart, daemonStop } from './spotweb'
-import { queueAlbum } from './queue'
-import { recordTrack } from './recordTrack'
-import { recordAlbum } from './recordAlbum'
+import { daemonPid, daemonStart, daemonStop } from './spotweb.mjs'
+import { queueAlbum } from './queue.mjs'
+import { recordTrack } from './recordTrack.mjs'
+import { recordAlbum } from './recordAlbum.mjs'
 
 export {
   daemonPid,

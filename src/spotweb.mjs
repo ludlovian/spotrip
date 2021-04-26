@@ -1,8 +1,8 @@
 import http from 'http'
 import { spawn } from 'child_process'
 
-import { exec } from './util'
-import { DAEMON_PORT, DAEMON_COMMAND } from './defaults'
+import { exec } from './util.mjs'
+import { DAEMON_PORT, DAEMON_COMMAND } from './defaults.mjs'
 
 export async function daemonPid ({ port = DAEMON_PORT } = {}) {
   return exec('fuser', [`${port}/tcp`]).then(

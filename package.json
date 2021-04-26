@@ -2,8 +2,10 @@
   "name": "spotrip",
   "version": "2.0.0",
   "description": "Spotify ripping",
+  "main": "src/index.mjs",
   "module": "src/index.mjs",
   "source": "src/index.mjs",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier-standard {src,test}/*.mjs",
@@ -16,18 +18,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "httpie": "^1.1.2",
     "logjs": "github:ludlovian/logjs",
     "ms": "^2.1.2",
     "progress-stream": "github:ludlovian/progress-stream",
     "retry": "github:ludlovian/retry",
-    "sade": "^1.7.0",
     "slugify": "^1.5.0",
     "speedo": "github:ludlovian/speedo"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^18.0.0",
-    "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^11.2.1"
   }
 }

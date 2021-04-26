@@ -1,13 +1,13 @@
-import { promises as fsProm } from 'fs'
+import { readFile, writeFile, rename } from 'fs/promises'
 import { spawn } from 'child_process'
 
 import slugify from 'slugify'
 
-import { getAlbumMetadata } from './spotweb'
-import { getAlbumArt } from './albumart'
-import defaultReport from './report'
-import { exec, normalizeUri, processEnded } from './util'
-import { WORK_DIRECTORY } from './defaults'
+import { getAlbumMetadata } from './spotweb.mjs'
+import { getAlbumArt } from './albumart.mjs'
+import defaultReport from './report.mjs'
+import { exec, normalizeUri, processEnded } from './util.mjs'
+import { WORK_DIRECTORY } from './defaults.mjs'
 
 export async function queueAlbum (
   uri,
@@ -24,7 +24,7 @@ export async function queueAlbum (
 
   const mdFile = `${workDir}/work/${uri.replace(/.*:/, '')}.json`
   const jpgFile = mdFile.replace(/json$/, 'jpg')
-  await fsProm.writeFile(mdFile, JSON.stringify(metadata, null, 2))
+  await writeFile(mdFile, JSON.stringify(metadata, null, 2))
 
   await Promise.all([
     processEnded(spawn('vi', [mdFile], { stdio: 'inherit' })),
@@ -32,18 +32,18 @@ export async function queueAlbum (
   ])
 
   // reread metadata
-  metadata = JSON.parse(await fsProm.readFile(mdFile, 'utf8'))
+  metadata = JSON.parse(await readFile(mdFile, 'utf8'))
   const jobName = metadata.path.replace(/\//g, '_')
 
   // create work directory
   const destDir = `${workDir}/work/${jobName}`
   await exec('mkdir', ['-p', destDir])
-  await fsProm.rename(mdFile, `${destDir}/metadata.json`)
-  await fsProm.rename(jpgFile, `${destDir}/cover.jpg`)
+  await rename(mdFile, `${destDir}/metadata.json`)
+  await rename(jpgFile, `${destDir}/cover.jpg`)
 
   // queue work item
   const jobFile = `${workDir}/queue/${jobName}`
-  await fsProm.writeFile(jobFile, `music spotrip ${destDir}`)
+  await writeFile(jobFile, `music spotrip ${destDir}`)
 
   report('spotrip.queue.done', jobName)
 }
