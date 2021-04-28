@@ -1,5 +1,5 @@
 import EventEmitter from 'events'
-import ms from 'ms'
+import { format } from '@lukeed/ms'
 
 import log from 'logjs'
 
@@ -20,7 +20,7 @@ reporter
     log.status('... ')
   })
   .on('spotrip.track.record.update', ({ percent, taken, eta }) =>
-    log.status(`- ${percent}%  in ${ms(taken)}  eta ${ms(eta)}`)
+    log.status(`- ${percent}%  in ${format(taken)}  eta ${format(eta)}`)
   )
   .on('spotrip.track.record.done', ({ total, speed }) => {
     log.prefix += log.green(

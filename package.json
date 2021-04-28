@@ -18,8 +18,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@lukeed/ms": "^2.0.0",
     "logjs": "github:ludlovian/logjs",
-    "ms": "^2.1.2",
     "progress-stream": "github:ludlovian/progress-stream",
     "retry": "github:ludlovian/retry",
     "slugify": "^1.5.0",
