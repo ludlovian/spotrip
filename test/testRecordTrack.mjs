@@ -1,8 +1,8 @@
-import { recordTrack } from '../src'
+import { recordTrack } from '../src/index.mjs'
 import { execFileSync } from 'child_process'
 
-const dir = '/home/alan/music/work/Gesualdo_Tenebrae'
-const uri = 'spotify:track:6ADCBr59IpB9lZHuE5pmfz'
+const dir = './test/assets'
+const uri = 'spotify:track:7IwJGVrr4oH5bun9Luei4t'
 const file = `${dir}/track01.flac`
 
 execFileSync('mkdir', ['-p', dir])

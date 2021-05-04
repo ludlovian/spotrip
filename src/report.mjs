@@ -8,6 +8,8 @@ const report = reporter.emit.bind(reporter)
 
 export default report
 
+let prefix
+
 reporter
   .on('spotrip.queue.start', uri => log(`Queue ${log.green(uri)}`))
   .on('spotrip.queue.done', name => {
@@ -16,22 +18,31 @@ reporter
   })
   .on('spotrip.track.record.start', file => {
     const name = file.replace(/.*\//, '')
-    log.prefix = `${log.green(name)} `
-    log.status('... ')
+    prefix = log.green(name)
+    log.status(prefix + ' ... ')
   })
   .on('spotrip.track.record.update', ({ percent, taken, eta }) =>
-    log.status(`- ${percent}%  in ${format(taken)}  eta ${format(eta)}`)
+    log.status(
+      [
+        prefix,
+        `- ${percent}% `,
+        `in ${format(taken)} `,
+        `eta ${format(eta)}`
+      ].join(' ')
+    )
   )
   .on('spotrip.track.record.done', ({ total, speed }) => {
-    log.prefix += log.green(
-      `- ${fmtDuration(total * 1e3)}  at ${speed.toFixed(1)}x`
+    prefix += log.green(
+      ` - ${fmtDuration(total * 1e3)}  at ${speed.toFixed(1)}x`
     )
-    log.status('')
+    log.status(prefix)
   })
-  .on('spotrip.track.convert.start', () => log.status(' ... converting'))
+  .on('spotrip.track.convert.start', () =>
+    log.status(prefix + ' ... converting')
+  )
   .on('spotrip.track.convert.done', () => {
-    log('')
-    log.prefix = ''
+    log(prefix)
+    prefix = ''
   })
   .on('spotrip.album.record.start', md => {
     log(`Recording ${log.cyan(md.album)}`)

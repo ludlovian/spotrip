@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises'
 
-import { exists } from './util.mjs'
+import exists from 'pixutil/exists'
+
 import { recordTrack } from './recordTrack.mjs'
 import defaultReport from './report.mjs'
 

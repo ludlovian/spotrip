@@ -1,12 +1,13 @@
 import { readFile, writeFile, rename } from 'fs/promises'
-import { spawn } from 'child_process'
 
 import slugify from 'slugify'
+import spawn from 'pixutil/spawn'
+import exec from 'pixutil/exec'
 
 import { getAlbumMetadata } from './spotweb.mjs'
 import { getAlbumArt } from './albumart.mjs'
 import defaultReport from './report.mjs'
-import { exec, normalizeUri, processEnded } from './util.mjs'
+import { normalizeUri } from './util.mjs'
 import { WORK_DIRECTORY } from './defaults.mjs'
 
 export async function queueAlbum (
@@ -27,7 +28,7 @@ export async function queueAlbum (
   await writeFile(mdFile, JSON.stringify(metadata, null, 2))
 
   await Promise.all([
-    processEnded(spawn('vi', [mdFile], { stdio: 'inherit' })),
+    spawn('vi', [mdFile], { stdio: 'inherit' }).done,
     getAlbumArt(metadata.tracks[0].trackUri, jpgFile)
   ])
 

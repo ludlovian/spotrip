@@ -1,7 +1,8 @@
 import { createWriteStream } from 'fs'
+import { pipeline } from 'stream/promises'
 import http from 'http'
 
-import { normalizeUri, streamFinished } from './util.mjs'
+import { normalizeUri } from './util.mjs'
 
 const SONOS_PLAYER = '192.168.86.210'
 const SONOS_PORT = 1400
@@ -25,20 +26,14 @@ export function albumArtUri (
 }
 
 export async function getAlbumArt (uri, destFile) {
-  const coverData = await new Promise((resolve, reject) =>
-    http
-      .get(albumArtUri(uri), resolve)
-      .once('error', reject)
-      .end()
-  ).then(res => {
-    if (res.statusCode !== 200) {
-      throw new Error(`${res.statusCode} - ${res.statusMessage}`)
-    }
-    return res
+  const res = await new Promise((resolve, reject) => {
+    const req = http.get(albumArtUri(uri), resolve)
+    req.once('error', reject).end()
   })
 
-  const fileStream = createWriteStream(destFile)
-  coverData.once('error', err => fileStream.emit('error', err)).pipe(fileStream)
+  if (res.statusCode !== 200) {
+    throw new Error(`${res.statusCode} - ${res.statusMessage}`)
+  }
 
-  await streamFinished(fileStream)
+  await pipeline(res, createWriteStream(destFile))
 }

@@ -1,14 +1,14 @@
 import { createWriteStream } from 'fs'
 import { unlink } from 'fs/promises'
-import { spawn } from 'child_process'
 import { pipeline } from 'stream/promises'
 
-import Speedo from 'speedo'
-import progressStream from 'progress-stream'
+import createSpeedo from 'speedo/gen'
+import progressStream from 'progress-stream/gen'
 import retry from 'retry'
+import exec from 'pixutil/exec'
 
 import defaultReport from './report.mjs'
-import { normalizeUri, processEnded } from './util.mjs'
+import { normalizeUri } from './util.mjs'
 import { getTrackMetadata, getPlayStream, getStatus } from './spotweb.mjs'
 
 const ONE_SECOND = 2 * 2 * 44100
@@ -35,19 +35,22 @@ export async function recordTrack ({ report = defaultReport, uri, file }) {
   })
 
   report('spotrip.track.convert.start')
-  await processEnded(
-    spawn('flac', [...FLAC_OPTIONS, `--output-name=${file}`, pcmFile])
-  )
+  await exec('flac', [...FLAC_OPTIONS, `--output-name=${file}`, pcmFile])
   await unlink(pcmFile)
   report('spotrip.track.convert.done')
 
-  function onProgress (data) {
-    if (!data.current) {
-      report('spotrip.track.record.start', file)
-    } else if (data.done) {
-      report('spotrip.track.record.done', data)
+  function onProgress (update) {
+    const { done, bytes, speedo } = update
+    if (!bytes) return report('spotrip.track.record.start', file)
+
+    const { taken, eta, percent, total, rate } = speedo
+    if (done) {
+      report('spotrip.track.record.done', {
+        total: total / ONE_SECOND,
+        speed: rate / ONE_SECOND
+      })
     } else {
-      report('spotrip.track.record.update', data)
+      report('spotrip.track.record.update', { percent, taken, eta })
     }
   }
 }
@@ -56,36 +59,16 @@ async function captureTrackPCM ({ uri, file, onProgress }) {
   // send an initial progress marker
   onProgress({})
 
-  // get track length
+  // get data size
   const md = await getTrackMetadata(uri)
-  const speedo = new Speedo({ window: 60 })
-  speedo.total = 1 + md.duration / 1e3
+  const speedo = createSpeedo({ total: (ONE_SECOND * (1 + md.duration)) / 1e3 })
 
-  // get stream
-  const dataStream = await getPlayStream(uri)
-
-  // progress
-  const progress = progressStream({
-    progressInterval: 1000,
-    onProgress ({ bytes, done }) {
-      const current = bytes / ONE_SECOND
-      speedo.update({ current })
-      if (done) speedo.total = current
-      onProgress({
-        done,
-        current,
-        taken: speedo.taken(),
-        percent: speedo.percent(),
-        total: speedo.total,
-        eta: speedo.eta(),
-        speed: speedo.rate()
-      })
-    }
-  })
-
-  const fileStream = createWriteStream(file)
-
-  await pipeline(dataStream, progress, fileStream)
+  await pipeline(
+    await getPlayStream(uri),
+    speedo,
+    progressStream({ onProgress, speedo }),
+    createWriteStream(file)
+  )
 
   const { streamed, error } = await getStatus()
   if (!streamed || error) {

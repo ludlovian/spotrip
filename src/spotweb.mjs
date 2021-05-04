@@ -1,7 +1,8 @@
 import http from 'http'
 import { spawn } from 'child_process'
 
-import { exec } from './util.mjs'
+import exec from 'pixutil/exec'
+
 import { DAEMON_PORT, DAEMON_COMMAND } from './defaults.mjs'
 
 export async function daemonPid ({ port = DAEMON_PORT } = {}) {
@@ -50,22 +51,18 @@ async function getData (opts) {
   return JSON.parse(data)
 }
 
-function getResponse ({ path, port = DAEMON_PORT } = {}) {
-  return new Promise((resolve, reject) => {
-    http
-      .get(`http://localhost:${port}${path}`, resolve)
-      .once('error', reject)
-      .end()
-  }).then(
-    res => {
-      if (res.statusCode !== 200) {
-        throw new Error(`${res.statusCode} - ${res.statusMessage}`)
-      }
-      return res
-    },
-    err => {
-      if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
-      throw err
-    }
-  )
+async function getResponse ({ path, port = DAEMON_PORT } = {}) {
+  try {
+    const p = new Promise((resolve, reject) => {
+      const req = http.get(`http://localhost:${port}${path}`, resolve)
+      req.once('error', reject).end()
+    })
+    const response = await p
+    const { statusCode: code, statusMessage: msg } = response
+    if (code !== 200) throw Object.assign(new Error(msg), { response })
+    return response
+  } catch (err) {
+    if (err.code === 'ECONNREFUSED') throw new Error('Spotweb not running')
+    throw err
+  }
 }
