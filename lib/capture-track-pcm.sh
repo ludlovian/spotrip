@@ -31,7 +31,9 @@ capture_track_pcm () {
     pv \
       --size "$size" \
       --rate-limit $OPT_DOWLOAD_RATE \
-      > "$output"
+      > "${output}.tmp"
+
+  mv "${output}.tmp" "$output"
 
   printf 'Capturing %s.pcm ... complete\n' "$file"
 
