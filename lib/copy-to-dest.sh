@@ -7,5 +7,5 @@ copy_to_dest () {
     --archive \
     --remove-source-files \
     "$WORK/" \
-    "$MUSIC_ROOT/$DEST/"
+    "$MUSIC_ROOT/$dest/"
 }
