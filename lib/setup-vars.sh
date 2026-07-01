@@ -10,9 +10,10 @@ MUSIC_ROOT=/mnt/data/media/albums/Classical
 
 JONOS_URL="http://pi2.local:3500"
 
-OPT_DOWLOAD_RATE="300K"
+OPT_DOWLOAD_RATE="200K"
 
 mkdir -p $WORK/
+rm $WORK/*.tmp || true
 
 die () {
   echo "$@" >&2
