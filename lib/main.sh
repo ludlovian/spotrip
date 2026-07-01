@@ -4,13 +4,21 @@
 main () {
   local id artist title dest
 
-  select_spotify_album id artist title
-  [[ -n "$id" ]] || exit
+  if [[ ! -f $PROGDIR/current.job ]]; then 
+    select_spotify_album id artist title
+    [[ -n "$id" ]] || exit
 
-  get_dest "$artist" "$title" dest
-  [[ -n "$dest" ]] || exit
+    get_dest "$artist" "$title" dest
+    [[ -n "$dest" ]] || exit
 
-  dialog --clear
+    dialog --clear
 
-  migrate_album "$id" "$dest"
+    printf 'migrate_album %q %q\n' \
+      "$id" "$dest" \
+      > $PROGDIR/current.job
+  else
+    echo 'Resuming task'
+  fi
+
+  source $PROGDIR/current.job
 }
