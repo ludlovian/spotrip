@@ -1,0 +1,15 @@
+#!/bin/bash
+IFS=$'\n\t';set -eEuo pipefail
+
+on_error () {
+  local _rc=$?
+  local src=${BASH_SOURCE[0]}
+  echo "Died on line $1 of $src. rc=$_rc" >&2
+  exit $_rc
+}
+trap 'on_error $LINENO' ERR
+
+PROGDIR=$(dirname "$(realpath "$0")")
+for f in $PROGDIR/lib/*.sh; do source $f;done
+
+main "$@"

@@ -1,0 +1,7 @@
+To authenticate, use the network inspector on the spotify web player
+- look for "token" there will be a JSON response with access_token (and _notes saying this is a private endpoint)
+- run librespot with --name "spotrip_headless_client" --access-token TOKEN --cache ./cache
+  - it will autheticate, and then write the credentials.json file in ./cache
+
+To download run play ./cache/credentials.json TRACK_ID
+  - data goes to stdout
