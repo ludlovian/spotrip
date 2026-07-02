@@ -15,7 +15,6 @@ JONOS_URL="http://pi2.local:3500"
 OPT_DOWLOAD_RATE="200K"
 
 mkdir -p $WORK/
-rm -f $WORK/*.tmp || true
 
 die () {
   echo "$@" >&2

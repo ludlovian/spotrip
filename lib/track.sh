@@ -53,6 +53,8 @@ track_capture_pcm () {
   [[ ! -s "$output" ]] || return 0
 
   while (( attempt <= max_attempts )); do
+    rm -f "${output}.tmp"
+
     if $CMD_PLAY \
         "$CREDS_FILE" "$track_id" |
       pv \
