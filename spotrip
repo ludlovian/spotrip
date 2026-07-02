@@ -12,4 +12,4 @@ trap 'on_error $LINENO' ERR
 PROGDIR=$(dirname "$(realpath "$0")")
 for f in $PROGDIR/lib/*.sh; do source $f;done
 
-main "$@"
+process_main "$@"

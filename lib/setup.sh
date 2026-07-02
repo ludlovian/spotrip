@@ -5,15 +5,17 @@ CMD_DBX=/home/alan/bin/dbx
 CMD_PLAY=$PROGDIR/bin/play
 
 CREDS_FILE=$PROGDIR/cache/credentials.json
-WORK=$PROGDIR/work
 MUSIC_ROOT=/mnt/data/media/albums/Classical
+
+WORK=$PROGDIR/work
+QUEUE=$PROGDIR/queue.txt
 
 JONOS_URL="http://pi2.local:3500"
 
 OPT_DOWLOAD_RATE="200K"
 
 mkdir -p $WORK/
-rm $WORK/*.tmp || true
+rm -f $WORK/*.tmp || true
 
 die () {
   echo "$@" >&2
