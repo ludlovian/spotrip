@@ -16,7 +16,6 @@ process_main () {
 
 process_queue () {
   local cmdline
-  local cmd
   queue_get cmdline
 
   while [[ -n "$cmdline" ]]; do
