@@ -21,4 +21,6 @@ main () {
   fi
 
   source $PROGDIR/current.job
+
+  rm $PROGDIR/current.job
 }
