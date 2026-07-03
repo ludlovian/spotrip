@@ -33,7 +33,8 @@ track_rip () {
     "$album_id" \
     "$track_id" \
     "${track_metadata[file]}" \
-    "${track_metadata[pcm_bytes]}"
+    "${track_metadata[pcm_bytes]}" \
+    9>"$LOCKFILE"
 
   track_convert_to_flac \
     "$album_id" \
@@ -58,6 +59,8 @@ track_capture_pcm () {
   local max_attempts=5 attempt=1 delay=2
 
   [[ ! -s "$output" ]] || return 0
+
+  flock 9
 
   while (( attempt <= max_attempts )); do
     rm -f "${output}.tmp"

@@ -8,7 +8,8 @@ CREDS_FILE=$PROGDIR/cache/credentials.json
 MUSIC_ROOT=/mnt/data/media/albums/Classical
 
 WORK=$PROGDIR/work
-QUEUE=$PROGDIR/work/queue.txt
+QUEUE=$WORK/queue.txt
+LOCKFILE=/tmp/spotrip.lock
 
 JONOS_URL="http://pi2.local:3500"
 
