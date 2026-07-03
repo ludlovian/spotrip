@@ -132,6 +132,8 @@ album_publish () {
     "Path:   ${YELLOW}${dest}${RESET}" \
     "        ${RED}Publishing album...${RESET}"
 
+  mkdir -p "$MUSIC_ROOT/$dest"
+
   rsync \
     --archive \
     --verbose \
