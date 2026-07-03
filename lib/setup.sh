@@ -8,7 +8,7 @@ CREDS_FILE=$PROGDIR/cache/credentials.json
 MUSIC_ROOT=/mnt/data/media/albums/Classical
 
 WORK=$PROGDIR/work
-QUEUE=$PROGDIR/queue.txt
+QUEUE=$PROGDIR/work/queue.txt
 
 JONOS_URL="http://pi2.local:3500"
 
@@ -28,3 +28,4 @@ YELLOW=$'\e[33m'
 BLUE=$'\e[34m'
 MAGENTA=$'\e[35m'
 CYAN=$'\e[36m'
+

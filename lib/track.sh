@@ -5,14 +5,17 @@
 #
 
 track_rip () {
-  local track_id=$1
+  local album_id=$1
+  local track_id=$2
 
   local -A track_metadata
   sql_track_metadata "$track_id" track_metadata
 
   local file="${track_metadata[file]}"
 
-  local output="$WORK/$file.flac"
+  local output="$WORK/$album_id/$file.flac"
+  mkdir -p "$WORK/$album_id"
+
   if [[ -e "$output" ]]; then
     printf 'Capturing %s.flac ... already done\n' "$file"
     return 0
@@ -27,27 +30,31 @@ track_rip () {
     "        ${RED}Capturing track${RESET}"
 
   track_capture_pcm \
+    "$album_id" \
     "$track_id" \
     "${track_metadata[file]}" \
     "${track_metadata[pcm_bytes]}"
 
   track_convert_to_flac \
+    "$album_id" \
     "${track_metadata[file]}"
 
   track_cover_art \
+    "$album_id" \
     "${track_metadata[artwork]}" \
     "${track_metadata[art_type]}"
 }
 
 track_capture_pcm () {
-  local track_id=$1
-  local file=$2
-  local size=$3
+  local album_id=$1
+  local track_id=$2
+  local file=$3
+  local size=$4
 
   [[ -n "$file" ]] || die 'file missing from metadata'
   [[ -n "$size" ]] || die 'pcm_data missing from metadata'
 
-  local output="$WORK/$file.pcm"
+  local output="$WORK/$album_id/$file.pcm"
   local max_attempts=5 attempt=1 delay=2
 
   [[ ! -s "$output" ]] || return 0
@@ -82,10 +89,11 @@ track_capture_pcm () {
 }
 
 track_convert_to_flac () {
-  local file=$1
+  local album_id=$1
+  local file=$2
 
-  local input="$WORK/$file.pcm"
-  local output="$WORK/$file.flac"
+  local input="$WORK/$album_id/$file.pcm"
+  local output="$WORK/$album_id/$file.flac"
 
   [[ -e "$input" ]] || die "$input does not exist"
 
@@ -103,13 +111,14 @@ track_convert_to_flac () {
 }
 
 track_cover_art () {
-  local artwork=$1
-  local art_type=$2
+  local album_id=$1
+  local artwork=$2
+  local art_type=$3
 
   [[ -n "$art_type" ]] || die 'art_type missing from metadata'
   [[ -n "$artwork" ]] || die 'artwork missing from metadata'
 
-  local output="$WORK/cover.$art_type"
+  local output="$WORK/$album_id/cover.$art_type"
 
   [[ ! -s "$output" ]] || return 0
 

@@ -22,7 +22,7 @@ album_analyse () {
     "        ${RED}Analysing album...${RESET}"
 
   for track_id in "${tracks[@]}"; do
-    queue_add track "$track_id"
+    queue_add track "$album_id" "$track_id"
   done
 
   queue_add tag "$album_id"
@@ -43,24 +43,26 @@ album_tag () {
     "        ${RED}Tagging album...${RESET}"
 
   for  track_id in "${tracks[@]}"; do
-    album_tag_track $track_id
+    album_tag_track "$album_id" "$track_id"
   done
 
-  album_replay_gain
+  album_replay_gain "$album_id"
 }
 
 album_tag_track () {
-  local track_id=$1
+  local album_id=$1
+  local track_id=$2
 
   local -A track_metadata
   local -a artists album_artists tags
-  local flac_file artist album_artist
+  local flac_file artist album_artist cover_file
 
   sql_track_metadata $track_id track_metadata
 
   unpack_artists "${track_metadata[artist]}" artists
   unpack_artists "${track_metadata[album_artist]}" album_artists
-  flac_file="$WORK/${track_metadata[file]}.flac"
+  flac_file="$WORK/$album_id/${track_metadata[file]}.flac"
+  cover_file="$WORK/$album_id/cover.${track_metadata[art_type]}"
 
   metaflac --remove-all-tags "$flac_file"
   metaflac --remove --block-type=PICTURE "$flac_file"
@@ -86,13 +88,14 @@ album_tag_track () {
   tags+=("--set-tag=TRACKID=${track_metadata[track_id]}")
   tags+=("--set-tag=ALBUMID=${track_metadata[album_id]}")
 
-  tags+=("--import-picture-from=$WORK/cover.${track_metadata[art_type]}")
+  tags+=("--import-picture-from=$cover_file")
 
   metaflac "${tags[@]}" "$flac_file"
 }
 
 album_replay_gain () {
-  local -a flac_files=("$WORK"/track*.flac)
+  local album_id=$1
+  local -a flac_files=("$WORK/$album_id"/track*.flac)
   metaflac --add-replay-gain "${flac_files[@]}"
 
   local album_gain album_peak
@@ -132,7 +135,8 @@ album_publish () {
   rsync \
     --archive \
     --verbose \
-    --remove-source-files \
-    "$WORK/" \
+    "$WORK/$album_id/" \
     "$MUSIC_ROOT/$dest/"
+
+  rm -rf "$WORK/$album_id"
 }
