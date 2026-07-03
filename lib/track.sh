@@ -62,20 +62,26 @@ track_capture_pcm () {
   while (( attempt <= max_attempts )); do
     rm -f "${output}.tmp"
 
+    set -m
+
     if $CMD_PLAY \
         "$CREDS_FILE" "$track_id" |
       pv \
         --size "$size" \
         --rate-limit $OPT_DOWLOAD_RATE |
       python3 \
-        $PROGDIR/lib/stream-idle-detect.py \
+        $PROGDIR/lib/stream-idle-detect.py 10 \
       > "${output}.tmp"; then
+
+      set +m
 
       mv "${output}.tmp" "$output"
       sleep $((RANDOM % 3 + 2))
       return
 
     else
+      set +m
+
       if (( attempt < max_attempts )); then
         echo "FAILED: Trying again soon"
         sleep "$delay"
